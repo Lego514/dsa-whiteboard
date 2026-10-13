@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { boardDocSchema, EMPTY_DOC, Whiteboard, type BoardDoc, type Locale } from '../src';
+import { EMPTY_DOC, Whiteboard, type BoardDoc, type Locale } from '../src';
+import { boardDocSchema } from '../src/schema';
 
 // 獨立的白板網站：一張白板存在這個瀏覽器裡，不用登入。
 

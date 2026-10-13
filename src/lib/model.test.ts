@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { boardDocSchema, fitsSizeLimit } from '../schema';
+import { fitsSizeLimit } from '../constants';
+import { boardDocSchema } from '../schema';
 import {
   addElement,
   addPointerAt,

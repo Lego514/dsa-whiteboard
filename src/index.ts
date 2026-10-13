@@ -11,4 +11,6 @@ export {
 export type { Locale, Messages } from './i18n';
 export { EMPTY_DOC, MAX_STEPS, type BoardStep } from './lib/model';
 export { boardToSvg } from './lib/exportSvg';
-export * from './schema';
+export * from './constants';
+// 資料格式要用 zod，放在 dsa-whiteboard/schema；這裡只匯出型別，元件才不會把 zod 打包進去
+export type { BoardDoc, BoardElement } from './schema';

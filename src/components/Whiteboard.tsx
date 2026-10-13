@@ -10,7 +10,8 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
-import { BOARD_COLORS, BOARD_MAX_BYTES, CELL_COLORS, type BoardColor, type BoardDoc, type CellColor } from '../schema';
+import { BOARD_COLORS, BOARD_MAX_BYTES, CELL_COLORS, type BoardColor, type CellColor } from '../constants';
+import type { BoardDoc } from '../schema';
 import { I18nProvider, MESSAGES, useI18n, type Locale } from '../i18n';
 import { boardToSvg, estimateWidth, type Measure } from '../lib/exportSvg';
 import * as m from '../lib/model';

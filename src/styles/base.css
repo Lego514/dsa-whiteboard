@@ -1,0 +1,396 @@
+/* 獨立使用白板時的基本樣式：設計變數（含深色模式）、按鈕、輸入框、對話框、提示訊息。
+   已經有自己基本樣式的網站只要引入 board.css。 */
+
+/* 刷題教練：方格筆記本。紙、鋼筆藍、螢光筆，只在「今天該做的事」上用螢光筆。 */
+:root {
+  --paper: #f3f5f8;
+  --grid: #e3e8ef;
+  --sheet: #ffffff;
+  --sheet-2: #f7f9fb;
+  --rule: #d6dde7;
+  --rule-strong: #b9c3d1;
+  --ink: #16233a;
+  --ink-2: #47556d;
+  --ink-3: #6f7c91;
+  --pen: #2346a0;
+  --pen-hover: #1b3882;
+  --pen-soft: #e7edfa;
+  --on-pen: #ffffff;
+  --marker: #ffe45c;
+  --marker-ink: #16233a;
+  --easy: #1d7350;
+  --medium: #9a5b06;
+  --hard: #b83427;
+  --danger: #b42318;
+  --danger-soft: #fdecea;
+  --good: #1d7350;
+  --focus: #2346a0;
+
+  /* 熟練度：單一色相，由淺到深 */
+  --level-0: #ffffff;
+  --level-1: #d9e2f6;
+  --level-2: #a9bdee;
+  --level-3: #6788da;
+  --level-4: #2346a0;
+
+  --toast-bg: #16233a;
+  --toast-ink: #f3f5f8;
+
+  --font-sans: 'Schibsted Grotesk Variable', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'Cascadia Code', Consolas, monospace;
+
+  --radius-sm: 4px;
+  --radius: 6px;
+  --nav-width: 208px;
+  --content-width: 920px;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --paper: #0e1829;
+    --grid: #16233a;
+    --sheet: #131f34;
+    --sheet-2: #172640;
+    --rule: #26385a;
+    --rule-strong: #3a4f76;
+    --ink: #e8eef8;
+    --ink-2: #b0bdd2;
+    --ink-3: #8593ab;
+    --pen: #8fb0ff;
+    --pen-hover: #adc5ff;
+    --pen-soft: #1c2d52;
+    --on-pen: #0e1829;
+    --marker: #6b5a12;
+    --marker-ink: #fff6c9;
+    --easy: #5cc79a;
+    --medium: #e3a94c;
+    --hard: #f08579;
+    --danger: #f08579;
+    --danger-soft: #3a1f24;
+    --good: #5cc79a;
+    --focus: #8fb0ff;
+    --level-0: #131f34;
+    --level-1: #213560;
+    --level-2: #2f4f93;
+    --level-3: #5078d0;
+    --level-4: #8fb0ff;
+    --toast-bg: #e8eef8;
+    --toast-ink: #0e1829;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --paper: #0e1829;
+  --grid: #16233a;
+  --sheet: #131f34;
+  --sheet-2: #172640;
+  --rule: #26385a;
+  --rule-strong: #3a4f76;
+  --ink: #e8eef8;
+  --ink-2: #b0bdd2;
+  --ink-3: #8593ab;
+  --pen: #8fb0ff;
+  --pen-hover: #adc5ff;
+  --pen-soft: #1c2d52;
+  --on-pen: #0e1829;
+  --marker: #6b5a12;
+  --marker-ink: #fff6c9;
+  --easy: #5cc79a;
+  --medium: #e3a94c;
+  --hard: #f08579;
+  --danger: #f08579;
+  --danger-soft: #3a1f24;
+  --good: #5cc79a;
+  --focus: #8fb0ff;
+  --level-0: #131f34;
+  --level-1: #213560;
+  --level-2: #2f4f93;
+  --level-3: #5078d0;
+  --level-4: #8fb0ff;
+  --toast-bg: #e8eef8;
+  --toast-ink: #0e1829;
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--ink);
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 元素的基本設定：去掉預設邊距、表單元素沿用字型 */
+h1,
+h2,
+h3,
+p,
+ul,
+ol,
+dl,
+dd,
+figure {
+  margin: 0;
+}
+
+ul,
+ol {
+  padding: 0;
+  list-style: none;
+}
+
+a {
+  color: var(--pen);
+  text-underline-offset: 3px;
+}
+
+a:hover {
+  color: var(--pen-hover);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+code,
+pre,
+kbd {
+  font-family: var(--font-mono);
+  /* 程式碼不要把 -> 或 != 合成一個符號 */
+  font-variant-ligatures: none;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- 按鈕 ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-sm);
+  background: var(--sheet);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  border-color: var(--ink-3);
+  color: var(--ink);
+  background: var(--sheet-2);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--pen);
+  border-color: var(--pen);
+  color: var(--on-pen);
+}
+
+.btn-primary:hover {
+  background: var(--pen-hover);
+  border-color: var(--pen-hover);
+  color: var(--on-pen);
+}
+
+.btn-quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink-2);
+}
+
+.btn-quiet:hover {
+  background: var(--sheet-2);
+  border-color: transparent;
+}
+
+.btn-danger {
+  color: var(--danger);
+  border-color: var(--rule-strong);
+}
+
+.btn-danger:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.btn-small {
+  min-height: 30px;
+  padding: 3px 10px;
+  font-size: 14px;
+}
+
+.btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-sm);
+  background: var(--sheet);
+  color: var(--ink);
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: 2px solid var(--focus);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+
+.textarea {
+  resize: vertical;
+  line-height: 1.6;
+}
+
+/* ---------- 對話框 ---------- */
+.dialog {
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--sheet);
+  color: var(--ink);
+}
+
+.dialog::backdrop {
+  background: rgb(14 24 41 / 0.45);
+}
+
+.dialog-head {
+  padding: 18px 20px 4px;
+}
+
+.dialog-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.dialog-sub {
+  margin-top: 2px;
+  font-size: 14px;
+  color: var(--ink-3);
+}
+
+.dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 20px;
+}
+
+.dialog-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 18px;
+  border-top: 1px solid var(--rule);
+}
+
+/* ---------- 提示訊息 ---------- */
+.toast-region {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 50;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(420px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+@media (max-width: 899px) {
+  .toast-region {
+    bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+}
+
+.toast {
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: var(--toast-bg);
+  color: var(--toast-ink);
+  border: 1px solid var(--rule-strong);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.18);
+  font-size: 14px;
+  pointer-events: auto;
+  animation: toast-in 160ms ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}

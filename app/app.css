@@ -1,0 +1,17 @@
+/* 獨立網站標題列上的語言切換和 GitHub 連結 */
+.app-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.app-icon-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-icon-link svg {
+  width: 18px;
+  height: 18px;
+}

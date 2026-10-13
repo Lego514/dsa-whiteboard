@@ -1,4 +1,4 @@
-import type { BoardColor, CellColor } from '../schema';
+import type { BoardColor, CellColor } from '../constants';
 import type { BoardDoc, BoardElement } from '../schema';
 
 // 白板的資料模型與純函式：建立元件、排版尺寸、指標吸附、移動、刪除、箭頭端點、橡皮擦、復原紀錄。

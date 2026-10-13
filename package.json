@@ -1,6 +1,6 @@
 {
   "name": "dsa-whiteboard",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A whiteboard for data structures and algorithms: arrays, pointers, trees, graphs, heaps, DP tables, intervals, recursion trees, step-by-step playback, and line-by-line code tracing. A React component and a standalone web app.",
   "license": "MIT",
   "author": "Lego514",

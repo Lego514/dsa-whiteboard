@@ -712,6 +712,23 @@ function Editor<R>({
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
+    // 樹、圖、遞迴樹正在輸入數值時（例如剛加完子節點），點另一個節點是要選它：
+    // 結束輸入、改選那個節點。點正在輸入的那一格才是繼續打字
+    const nodeInput = target.closest<HTMLInputElement>('input.board-tree-node, input.board-graph-node, input.board-rec-node');
+    if (editingId && nodeInput && nodeInput !== document.activeElement) {
+      const nodeOf = nodeInput.closest<HTMLElement>('[data-el]')?.dataset.el;
+      const index = Number(nodeInput.dataset.cell);
+      if (nodeOf && Number.isInteger(index) && !(nodeOf === editingId && index === editFocus)) {
+        // 不要讓游標跑到那一格
+        e.preventDefault();
+        lastTap.current = null;
+        stopEditing();
+        setSelection(new Set([nodeOf]));
+        setCellSel({ id: nodeOf, index });
+        setEdgeSel(null);
+        return;
+      }
+    }
     // 輸入框和畫布上的按鈕自己處理；中間按過別的東西，就不算連點兩下
     if (target.closest('input, textarea, button, [data-ui]')) {
       lastTap.current = null;
@@ -781,7 +798,10 @@ function Editor<R>({
         const tap = lastTap.current;
         if (tap?.id === elId && tap.cell === cell && now - tap.time < 350) {
           lastTap.current = null;
-          if (m.findElement(doc, elId)?.type !== 'shape') startEditing(elId, cell);
+          const tapped = m.findElement(doc, elId);
+          // 樹、圖、遞迴樹的節點：不讓瀏覽器把焦點移到剛被換掉的節點上，輸入框才拿得到游標
+          if (cell !== undefined && (tapped?.type === 'tree' || tapped?.type === 'graph' || tapped?.type === 'recursion')) e.preventDefault();
+          if (tapped?.type !== 'shape') startEditing(elId, cell);
           return;
         }
         if (e.shiftKey) {

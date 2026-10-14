@@ -521,6 +521,8 @@ test('traces a recursion tree: returns, pruning, child calls, and a pointer walk
   await expect(pointer).toHaveAccessibleName('Pointer i at node f(3)');
 
   // 用縮排的文字整個換掉；指標還指得到就留著
+  // 前面選了最下面的呼叫，畫面往上挪過；先顯示全部，再點名稱選整棵樹
+  await page.getByRole('button', { name: 'Show everything (0)' }).click();
   await tree.locator('.board-label').click();
   await selbar.getByRole('button', { name: 'Build from text' }).click();
   await selbar.getByRole('textbox', { name: 'Build from text' }).fill('f(2) => 1\n  f(1) => 1\n  f(0) => 0');
@@ -700,4 +702,34 @@ test('picks tree nodes level by level and adds a child from the canvas, even on 
   await page.getByRole('textbox', { name: 'Tree position 12' }).fill('1');
   await page.keyboard.press('Enter');
   await expect(tree).toHaveAccessibleName('Binary tree root: [3,9,20,4,5,15,7,null,null,null,null,null,1]');
+});
+
+test('after adding a node and typing its value, clicking another node selects it', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Binary tree', exact: true }).click();
+  const tree = page.getByRole('group', { name: /^Binary tree root/ });
+  const selbar = page.getByRole('toolbar', { name: 'Selected element' });
+
+  // 選 2，加左子節點，輸入值，不按 Enter 直接點另一個節點
+  await tree.locator('[data-cell="1"]').click();
+  await selbar.getByRole('button', { name: '+ Left child' }).click();
+  const input = page.getByRole('textbox', { name: 'Tree position 3' });
+  await expect(input).toBeFocused();
+  await input.fill('4');
+  await tree.locator('[data-cell="2"]').click();
+
+  // 結束輸入、選到 3，值有留下來；接著可以直接幫 3 加子節點
+  await expect(page.getByRole('textbox', { name: /^Tree position/ })).toHaveCount(0);
+  await expect(selbar).toContainText('Node 3');
+  await expect(tree).toHaveAccessibleName('Binary tree root: [1,2,3,4]');
+  await selbar.getByRole('button', { name: '+ Right child' }).click();
+  await page.getByRole('textbox', { name: 'Tree position 6' }).fill('7');
+  await page.keyboard.press('Enter');
+  await expect(tree).toHaveAccessibleName('Binary tree root: [1,2,3,4,null,null,7]');
+
+  // 點正在輸入的那一格，還是繼續輸入
+  await tree.locator('[data-cell="0"]').dblclick();
+  const root = page.getByRole('textbox', { name: 'Tree position 0' });
+  await root.click();
+  await expect(root).toBeFocused();
 });

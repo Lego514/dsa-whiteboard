@@ -654,8 +654,19 @@ function Editor<R>({
       const r = node.getBoundingClientRect();
       return { x: r.left, y: r.top, w: r.width, h: r.height };
     };
-    const dy = m.revealShift(box(part ?? host), box(bar), box(viewport));
-    if (dy !== 0) setView((v) => ({ ...v, y: v.y + dy }));
+    // 二元樹選了一個節點：連它的子節點和加子節點的「+」一起露出來，才點得到下一層
+    const below =
+      el?.type === 'tree' && cellSel?.id === id
+        ? [
+            ...[2 * cellSel.index + 1, 2 * cellSel.index + 2].flatMap((child) => host.querySelector(`[data-cell="${child}"]`) ?? []),
+            ...host.querySelectorAll('.board-tree-slot'),
+          ]
+        : [];
+    const target = [part ?? host, ...below].map(box).reduce(m.unionRect);
+    const dy = m.revealShift(target, box(bar), box(viewport));
+    // 樹的節點和「+」在手機上可能超出左右兩邊；其他元件只管上下
+    const dx = below.length > 0 ? m.revealShiftX(target, box(viewport)) : 0;
+    if (dx !== 0 || dy !== 0) setView((v) => ({ ...v, x: v.x + dx, y: v.y + dy }));
   };
 
   const dpAt = single?.type === 'dp' && single.at ? `${single.at.r}:${single.at.c}` : single?.type === 'text' ? String(single.line ?? '') : '';
@@ -701,6 +712,23 @@ function Editor<R>({
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
+    // 樹、圖、遞迴樹正在輸入數值時（例如剛加完子節點），點另一個節點是要選它：
+    // 結束輸入、改選那個節點。點正在輸入的那一格才是繼續打字
+    const nodeInput = target.closest<HTMLInputElement>('input.board-tree-node, input.board-graph-node, input.board-rec-node');
+    if (editingId && nodeInput && nodeInput !== document.activeElement) {
+      const nodeOf = nodeInput.closest<HTMLElement>('[data-el]')?.dataset.el;
+      const index = Number(nodeInput.dataset.cell);
+      if (nodeOf && Number.isInteger(index) && !(nodeOf === editingId && index === editFocus)) {
+        // 不要讓游標跑到那一格
+        e.preventDefault();
+        lastTap.current = null;
+        stopEditing();
+        setSelection(new Set([nodeOf]));
+        setCellSel({ id: nodeOf, index });
+        setEdgeSel(null);
+        return;
+      }
+    }
     // 輸入框和畫布上的按鈕自己處理；中間按過別的東西，就不算連點兩下
     if (target.closest('input, textarea, button, [data-ui]')) {
       lastTap.current = null;
@@ -770,7 +798,10 @@ function Editor<R>({
         const tap = lastTap.current;
         if (tap?.id === elId && tap.cell === cell && now - tap.time < 350) {
           lastTap.current = null;
-          if (m.findElement(doc, elId)?.type !== 'shape') startEditing(elId, cell);
+          const tapped = m.findElement(doc, elId);
+          // 樹、圖、遞迴樹的節點：不讓瀏覽器把焦點移到剛被換掉的節點上，輸入框才拿得到游標
+          if (cell !== undefined && (tapped?.type === 'tree' || tapped?.type === 'graph' || tapped?.type === 'recursion')) e.preventDefault();
+          if (tapped?.type !== 'shape') startEditing(elId, cell);
           return;
         }
         if (e.shiftKey) {
@@ -1734,15 +1765,16 @@ function NodeActions({ tree, index, onColor, onAddPointer, onAddChild, onDelete 
   return (
     <>
       <span className="board-selbar-title">{t.board.nodeLabel(tree.nodes[index] ?? '')}</span>
-      <CellColors current={tree.colors?.[index] ?? null} onColor={onColor} />
-      <button type="button" className="btn btn-small" onClick={onAddPointer}>
-        {a.addPointer}
-      </button>
+      {/* 最常用的放前面：手機上選取列只有一列，後面的要往右滑 */}
       <button type="button" className="btn btn-small" disabled={!canAdd(left)} onClick={() => onAddChild(left)}>
         {a.addLeftChild}
       </button>
       <button type="button" className="btn btn-small" disabled={!canAdd(right)} onClick={() => onAddChild(right)}>
         {a.addRightChild}
+      </button>
+      <CellColors current={tree.colors?.[index] ?? null} onColor={onColor} />
+      <button type="button" className="btn btn-small" onClick={onAddPointer}>
+        {a.addPointer}
       </button>
       <button type="button" className="btn btn-small btn-danger" disabled={index === 0} onClick={onDelete}>
         {a.deleteSubtree}

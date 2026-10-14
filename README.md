@@ -75,7 +75,7 @@ The interface is in English and Traditional Chinese.
 The package isn't on npm yet. Install it from GitHub at a release tag:
 
 ```bash
-npm install github:Lego514/dsa-whiteboard#v0.1.2
+npm install github:Lego514/dsa-whiteboard#v0.1.3
 ```
 
 React 19.2 or later is a peer dependency. zod 4 is needed only if you import `dsa-whiteboard/schema`.

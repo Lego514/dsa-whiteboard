@@ -654,8 +654,19 @@ function Editor<R>({
       const r = node.getBoundingClientRect();
       return { x: r.left, y: r.top, w: r.width, h: r.height };
     };
-    const dy = m.revealShift(box(part ?? host), box(bar), box(viewport));
-    if (dy !== 0) setView((v) => ({ ...v, y: v.y + dy }));
+    // 二元樹選了一個節點：連它的子節點和加子節點的「+」一起露出來，才點得到下一層
+    const below =
+      el?.type === 'tree' && cellSel?.id === id
+        ? [
+            ...[2 * cellSel.index + 1, 2 * cellSel.index + 2].flatMap((child) => host.querySelector(`[data-cell="${child}"]`) ?? []),
+            ...host.querySelectorAll('.board-tree-slot'),
+          ]
+        : [];
+    const target = [part ?? host, ...below].map(box).reduce(m.unionRect);
+    const dy = m.revealShift(target, box(bar), box(viewport));
+    // 樹的節點和「+」在手機上可能超出左右兩邊；其他元件只管上下
+    const dx = below.length > 0 ? m.revealShiftX(target, box(viewport)) : 0;
+    if (dx !== 0 || dy !== 0) setView((v) => ({ ...v, x: v.x + dx, y: v.y + dy }));
   };
 
   const dpAt = single?.type === 'dp' && single.at ? `${single.at.r}:${single.at.c}` : single?.type === 'text' ? String(single.line ?? '') : '';
@@ -1734,15 +1745,16 @@ function NodeActions({ tree, index, onColor, onAddPointer, onAddChild, onDelete 
   return (
     <>
       <span className="board-selbar-title">{t.board.nodeLabel(tree.nodes[index] ?? '')}</span>
-      <CellColors current={tree.colors?.[index] ?? null} onColor={onColor} />
-      <button type="button" className="btn btn-small" onClick={onAddPointer}>
-        {a.addPointer}
-      </button>
+      {/* 最常用的放前面：手機上選取列只有一列，後面的要往右滑 */}
       <button type="button" className="btn btn-small" disabled={!canAdd(left)} onClick={() => onAddChild(left)}>
         {a.addLeftChild}
       </button>
       <button type="button" className="btn btn-small" disabled={!canAdd(right)} onClick={() => onAddChild(right)}>
         {a.addRightChild}
+      </button>
+      <CellColors current={tree.colors?.[index] ?? null} onColor={onColor} />
+      <button type="button" className="btn btn-small" onClick={onAddPointer}>
+        {a.addPointer}
       </button>
       <button type="button" className="btn btn-small btn-danger" disabled={index === 0} onClick={onDelete}>
         {a.deleteSubtree}

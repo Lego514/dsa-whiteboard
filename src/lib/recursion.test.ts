@@ -18,6 +18,8 @@ import {
   recursionStep,
   repeatColors,
   revealShift,
+  revealShiftX,
+  unionRect,
   setRepeats,
   snapTarget,
   stepRecursionPointer,
@@ -255,5 +257,20 @@ describe('keeping the selection clear of the selection bar', () => {
     const topBar = { x: 400, y: 12, w: 480, h: 50 };
     expect(revealShift({ x: 500, y: 30, w: 100, h: 40 }, topBar, desktop)).toBe(44);
     expect(revealShift({ x: 100, y: 30, w: 100, h: 40 }, topBar, desktop)).toBe(0);
+  });
+});
+
+describe('revealing a tree node with its children', () => {
+  const viewport = { x: 0, y: 0, w: 390, h: 700 };
+
+  it('joins boxes into one', () => {
+    expect(unionRect({ x: 10, y: 20, w: 40, h: 40 }, { x: 0, y: 90, w: 30, h: 30 })).toEqual({ x: 0, y: 20, w: 50, h: 100 });
+  });
+
+  it('slides sideways only when something is cut off, and keeps the left edge when it is too wide', () => {
+    expect(revealShiftX({ x: 100, y: 0, w: 80, h: 40 }, viewport)).toBe(0);
+    expect(revealShiftX({ x: 340, y: 0, w: 80, h: 40 }, viewport)).toBe(-42);
+    expect(revealShiftX({ x: -30, y: 0, w: 80, h: 40 }, viewport)).toBe(42);
+    expect(revealShiftX({ x: -30, y: 0, w: 500, h: 40 }, viewport)).toBe(42);
   });
 });

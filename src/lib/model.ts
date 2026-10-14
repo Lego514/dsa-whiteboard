@@ -2177,6 +2177,22 @@ export function contentBounds(doc: BoardDoc, sizes?: Sizes): Rect | null {
  * 選取列擋住選到的東西時，畫面要上下挪多少（螢幕像素）才露出來；沒擋到是 0。
  * 選取列在下半部（手機）就往上挪，在上面（桌機）就往下挪；東西太高、整個放不下時對齊上緣。
  */
+/** 剛好包住兩個方框的方框 */
+export function unionRect(a: Rect, b: Rect): Rect {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return { x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y };
+}
+
+/** 左右超出畫面時，左右挪多少才放得進來；比畫面還寬就對齊左邊 */
+export function revealShiftX(target: Rect, viewport: Rect, margin = 12): number {
+  const left = viewport.x + margin;
+  const right = viewport.x + viewport.w - margin;
+  if (target.x >= left && target.x + target.w <= right) return 0;
+  if (target.w > right - left || target.x < left) return left - target.x;
+  return right - (target.x + target.w);
+}
+
 export function revealShift(target: Rect, bar: Rect, viewport: Rect, margin = 12): number {
   const covered = target.x < bar.x + bar.w && bar.x < target.x + target.w && target.y < bar.y + bar.h && bar.y < target.y + target.h;
   if (!covered) return 0;

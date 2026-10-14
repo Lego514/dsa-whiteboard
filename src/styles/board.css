@@ -1165,6 +1165,22 @@ textarea.board-text-input {
   box-shadow: inset 0 0 0 2px var(--pen);
 }
 
+/* 圓形和方形的節點選起來要很明顯，才知道接下來的操作是對哪一個 */
+.board-cell.board-tree-node[data-picked],
+.board-cell.board-graph-node[data-picked],
+.board-cell.board-rec-node[data-picked] {
+  z-index: 2;
+  border-color: var(--pen);
+  border-width: 3px;
+  box-shadow: 0 0 0 4px var(--pen-soft);
+}
+
+.board-cell.board-tree-node[data-picked]:not([data-color]),
+.board-cell.board-graph-node[data-picked]:not([data-color]),
+.board-cell.board-rec-node[data-picked]:not([data-color]) {
+  background: var(--pen-soft);
+}
+
 .board-selbar-title {
   align-self: center;
   padding: 0 4px;

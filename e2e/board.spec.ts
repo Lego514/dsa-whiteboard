@@ -658,3 +658,46 @@ test('types code like an editor: Python colors, indentation after a colon, and S
   await expect(code).toHaveAccessibleName(/^Code: for x in nums:\s+total \+= x$/);
   await expect(code.locator('.board-code-no')).toHaveText(['1', '2']);
 });
+
+test('picks tree nodes level by level and adds a child from the canvas, even on a phone', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Binary tree', exact: true }).click();
+  const tree = page.getByRole('group', { name: /^Binary tree root/ });
+  const selbar = page.getByRole('toolbar', { name: 'Selected element' });
+  await selbar.getByRole('button', { name: 'Build from text' }).click();
+  await selbar.getByRole('textbox', { name: 'Build from text' }).fill('[3,9,20,4,5,15,7]');
+  await selbar.getByRole('button', { name: 'Apply' }).click();
+  await expect(tree).toHaveAccessibleName('Binary tree root: [3,9,20,4,5,15,7]');
+
+  const viewport = page.viewportSize()!;
+  /** 整個露在畫面裡，而且沒被選取列擋住 */
+  const expectReachable = async (locator: ReturnType<typeof page.locator>) => {
+    const box = (await locator.boundingBox())!;
+    const bar = (await selbar.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+    const overlaps = box.y < bar.y + bar.height && bar.y < box.y + box.height && box.x < bar.x + bar.width && bar.x < box.x + box.width;
+    expect(overlaps).toBe(false);
+  };
+
+  // 一層一層往下選：選到的節點，它的子節點都會露出來，點得到
+  await tree.locator('[data-cell="0"]').click();
+  await expect(selbar).toContainText('Node 3');
+  await expectReachable(tree.locator('[data-cell="1"]'));
+  await expectReachable(tree.locator('[data-cell="2"]'));
+  await tree.locator('[data-cell="2"]').click();
+  await expect(selbar).toContainText('Node 20');
+  await expectReachable(tree.locator('[data-cell="5"]'));
+  await expectReachable(tree.locator('[data-cell="6"]'));
+
+  // 最下面一層的 15：加子節點的按鈕排在最前面，畫布上的「+」也點得到
+  await tree.locator('[data-cell="5"]').click();
+  await expect(selbar).toContainText('Node 15');
+  await expect(selbar.getByRole('button').first()).toHaveAccessibleName('+ Left child');
+  const slot = tree.getByRole('button', { name: '+ Right child' });
+  await expectReachable(slot);
+  await slot.click();
+  await page.getByRole('textbox', { name: 'Tree position 12' }).fill('1');
+  await page.keyboard.press('Enter');
+  await expect(tree).toHaveAccessibleName('Binary tree root: [3,9,20,4,5,15,7,null,null,null,null,null,1]');
+});

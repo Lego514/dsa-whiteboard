@@ -1,0 +1,59 @@
+name: Deploy collab server
+
+# main 上共用房間的伺服器有改動，就部署到 Cloudflare Workers。
+# 需要 repo 的 secrets：CLOUDFLARE_API_TOKEN、CLOUDFLARE_ACCOUNT_ID；還沒設定就跳過。
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'worker/**'
+      - 'src/collab/**'
+      - 'src/lib/model.ts'
+      - 'src/schema.ts'
+      - 'src/constants.ts'
+      - 'wrangler.jsonc'
+      - 'package-lock.json'
+      - '.github/workflows/worker.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: worker
+  cancel-in-progress: false
+
+jobs:
+  secrets:
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - id: check
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$TOKEN" ] && [ -n "$ACCOUNT" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::還沒設定 CLOUDFLARE_API_TOKEN 和 CLOUDFLARE_ACCOUNT_ID，跳過部署"
+          fi
+
+  deploy:
+    needs: secrets
+    if: needs.secrets.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run worker src/collab
+      - run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: 'false'

@@ -1,0 +1,16 @@
+{
+  // 白板共用房間的伺服器（Cloudflare Workers + Durable Objects）
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "dsa-whiteboard-collab",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-09-30",
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+  },
+  // 免費方案只能用 SQLite 版的 Durable Objects
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
+  "vars": {
+    "ALLOWED_ORIGINS": "https://lego514.github.io,http://localhost:5180,http://localhost:4180"
+  },
+  "observability": { "enabled": true }
+}

@@ -1,6 +1,7 @@
-/* 獨立網站標題列上的語言切換和 GitHub 連結 */
+/* 獨立網站標題列上的按鈕：共用、語言切換和 GitHub 連結 */
 .app-actions {
   display: flex;
+  flex: none;
   align-items: center;
   gap: 4px;
 }
@@ -11,7 +12,135 @@
   justify-content: center;
 }
 
-.app-icon-link svg {
+.app-icon-link svg,
+.app-share svg {
   width: 18px;
   height: 18px;
+}
+
+/* 房間裡的人：疊在一起的圓形頭像，顏色跟對方在白板上的游標一樣；點下去打開房間選單 */
+.app-peers {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  min-height: 30px;
+  margin-right: 2px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.app-peers:hover {
+  background: var(--sheet-2);
+}
+
+/* 還沒連上或斷線時頭像變淡 */
+.app-peers:not([data-state='open']) .app-peer {
+  opacity: 0.45;
+}
+
+.app-peer {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--sheet);
+  border-radius: 50%;
+  background: var(--peer, var(--rule-strong));
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.app-peers .app-peer + .app-peer {
+  margin-left: -7px;
+}
+
+.app-peer-more {
+  background: var(--sheet-2);
+  color: var(--ink-2);
+  font-size: 11px;
+}
+
+/* 房間選單：瀏覽器內建的 popover，點外面或按 Esc 就關 */
+.app-menu {
+  inset: auto;
+  top: calc(52px + env(safe-area-inset-top));
+  right: 12px;
+  width: min(300px, calc(100vw - 24px));
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--sheet);
+  color: var(--ink);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.14);
+}
+
+.app-menu-status {
+  margin: 0 0 8px;
+  color: var(--ink-3);
+  font-size: 13px;
+}
+
+.app-menu-people {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-menu-people li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+}
+
+.app-menu-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.app-menu-actions {
+  display: grid;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--rule);
+}
+
+.app-menu-actions .btn {
+  justify-content: flex-start;
+}
+
+.app-menu-actions svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 760px) {
+  .app-action-text {
+    display: none;
+  }
+}
+
+/* 手機上房間多了頭像和複製連結：GitHub 連結先收起來，連線狀態看頭像（選單裡有文字） */
+@media (max-width: 480px) {
+  .app-actions[data-room] .app-github {
+    display: none;
+  }
+
+  .board-head:has(.app-actions[data-room]) .board-save {
+    display: none;
+  }
 }

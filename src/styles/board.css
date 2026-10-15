@@ -2208,3 +2208,139 @@ input.board-dp-head-input {
 [data-peer='brown'] {
   --peer: #92400e;
 }
+
+/* ---------- 共用：標題列上的按鈕（ShareControls） ---------- */
+
+.board-share svg,
+.board-copy-link svg {
+  width: 18px;
+  height: 18px;
+}
+
+.board-copy-link {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* 房間裡的人：疊在一起的圓形頭像，顏色跟對方在白板上的游標一樣；點下去打開房間選單 */
+.board-peers {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  min-height: 30px;
+  margin-right: 2px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.board-peers:hover {
+  background: var(--sheet-2);
+}
+
+/* 還沒連上或斷線時頭像變淡 */
+.board-peers:not([data-state='open']) .board-peer {
+  opacity: 0.45;
+}
+
+.board-peer {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--sheet);
+  border-radius: 50%;
+  background: var(--peer, var(--rule-strong));
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.board-peers .board-peer + .board-peer {
+  margin-left: -7px;
+}
+
+.board-peer-more {
+  background: var(--sheet-2);
+  color: var(--ink-2);
+  font-size: 11px;
+}
+
+/* 房間選單：瀏覽器內建的 popover，點外面或按 Esc 就關 */
+.board-room-menu {
+  inset: auto;
+  top: calc(52px + env(safe-area-inset-top));
+  right: 12px;
+  width: min(300px, calc(100vw - 24px));
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--sheet);
+  color: var(--ink);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.14);
+}
+
+.board-room-status {
+  margin: 0 0 8px;
+  color: var(--ink-3);
+  font-size: 13px;
+}
+
+.board-room-people {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.board-room-people li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+}
+
+.board-room-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.board-room-actions {
+  display: grid;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--rule);
+}
+
+.board-room-actions .btn {
+  justify-content: flex-start;
+}
+
+.board-room-actions svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 760px) {
+  .board-action-text {
+    display: none;
+  }
+}
+
+/* 手機上標題列放不下：共用時連線狀態看頭像就好（選單裡有文字） */
+@media (max-width: 480px) {
+  .board-head:has(.board-peers) .board-save {
+    display: none;
+  }
+}

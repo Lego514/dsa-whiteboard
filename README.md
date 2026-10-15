@@ -76,7 +76,7 @@ The interface is in English and Traditional Chinese.
 The package isn't on npm yet. Install it from GitHub at a release tag:
 
 ```bash
-npm install github:Lego514/dsa-whiteboard#v0.1.3
+npm install github:Lego514/dsa-whiteboard#v0.1.4
 ```
 
 React 19.2 or later is a peer dependency. zod 4 is needed only if you import `dsa-whiteboard/schema`.
@@ -107,6 +107,8 @@ The board takes the whole screen. You own the storage: `onSave` is called about 
 | `onChange(doc)` | Called right away on every change (and once when the board opens), without waiting for the save delay. |
 | `collab` | Joins a live room: `{ url, name, seed?, onStatus? }`. `url` is the room's WebSocket address on the collab server, `name` is shown next to your cursor, `seed` puts your board into the room if it's empty (for whoever creates it), and `onStatus` reports the connection and who's there. While in a room, the room's board is the one shown. |
 | `explain` | Adds an Explain button that plays the recorded steps. You provide `Session` (shown under the playback bar while explaining) and `Review` (shown over the board when done). LeetCode Coach uses it for spoken explanations with a timer, recording, and transcript. |
+
+Put `<ShareControls>` in `actions` for the share UI: a Share button outside a room, and inside one the people's avatars (click for who's here, change your name, save a copy, leave) plus Copy link. You decide where the room id lives: `onShare()` creates the room and returns its link (copied for you), and `link`, `onRename(name)`, `onSaveCopy()`, `onLeave()` handle the rest. While in a room, the header shows the connection status instead of `savedLabel`.
 
 `newRoomId()` makes a random room id and `ROOM_ID` checks one; `PEER_COLORS` lists the colors people get, and `[data-peer="blue"]` (and so on) sets `--peer` to that color for your own avatars.
 

@@ -4,6 +4,22 @@ export const zhTW = {
   common: {
     cancel: '取消',
   },
+  collab: {
+    share: '共用',
+    shareHint: '建立共用連結，拿到連結的人可以一起編輯',
+    copyLink: '複製連結',
+    copied: '已複製',
+    room: '共用房間',
+    leave: '離開共用',
+    saveCopy: '存一份到我的白板',
+    you: '（你）',
+    rename: '改名字',
+    renamePrompt: '別人看到的名字',
+    people: (n: number) => `${n} 人在線上`,
+    connecting: '連線中…',
+    offline: '離線，正在重新連線…',
+    full: '這個房間已經滿了（最多 8 人）',
+  },
   board: {
     close: '關閉',
     savedLocal: '已存在這台裝置',

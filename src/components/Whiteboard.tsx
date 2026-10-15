@@ -11,6 +11,7 @@ import {
   type RefObject,
 } from 'react';
 import { applyOps, diffDocs, rebaseHistory } from '../collab/ops';
+import { RoomContext, roomLabel } from '../collab/context';
 import { useCollab, type CollabOptions } from '../collab/useCollab';
 import { BOARD_COLORS, BOARD_MAX_BYTES, CELL_COLORS, type BoardColor, type CellColor } from '../constants';
 import type { BoardDoc } from '../schema';
@@ -106,9 +107,9 @@ export interface WhiteboardProps<R = unknown> {
   caption?: string;
   /** 標題旁邊的小標籤，例如題目難度 */
   badge?: ReactNode;
-  /** 標題列右邊、匯出按鈕前面的其他按鈕或連結 */
+  /** 標題列右邊、匯出按鈕前面的其他按鈕或連結；共用的按鈕用 ShareControls */
   actions?: ReactNode;
-  /** 存好之後顯示的文字；沒給就是「已存在這台裝置」 */
+  /** 存好之後顯示的文字；沒給就是「已存在這台裝置」。共用時改成顯示連線狀態 */
   savedLabel?: string;
   locale?: Locale;
   /** 沒給就不顯示「關閉」按鈕 */
@@ -1282,11 +1283,17 @@ function Editor<R>({
             {badge}
           </h1>
         </div>
-        {/* 說清楚存在哪裡，例如只在這台裝置，或會同步到雲端 */}
+        {/* 說清楚存在哪裡，例如只在這台裝置，或會同步到雲端；共用時是連線狀態 */}
         <span className="board-save" aria-live="polite">
-          {tooLarge ? t.board.tooLarge : saving ? t.board.saving : (savedLabel ?? t.board.savedLocal)}
+          {tooLarge
+            ? t.board.tooLarge
+            : collab
+              ? roomLabel(room.status, t)
+              : saving
+                ? t.board.saving
+                : (savedLabel ?? t.board.savedLocal)}
         </span>
-        {actions}
+        <RoomContext.Provider value={collab ? { status: room.status } : null}>{actions}</RoomContext.Provider>
         <button
           type="button"
           className="btn btn-small board-export"

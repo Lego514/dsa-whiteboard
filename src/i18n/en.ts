@@ -6,6 +6,22 @@ export const en: Messages = {
   common: {
     cancel: 'Cancel',
   },
+  collab: {
+    share: 'Share',
+    shareHint: 'Create a link; anyone with it can edit this board with you',
+    copyLink: 'Copy link',
+    copied: 'Copied',
+    room: 'Shared room',
+    leave: 'Leave',
+    saveCopy: 'Save a copy to my board',
+    you: ' (you)',
+    rename: 'Change name',
+    renamePrompt: 'Name others see',
+    people: (n) => `${n} ${n === 1 ? 'person' : 'people'} here`,
+    connecting: 'Connecting…',
+    offline: 'Offline, reconnecting…',
+    full: 'This room is full (8 people max)',
+  },
   board: {
     close: 'Close',
     savedLocal: 'Saved on this device',

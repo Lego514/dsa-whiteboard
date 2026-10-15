@@ -11,3 +11,7 @@ playwright-report
 
 # 本機工具設定
 .claude/
+
+# Cloudflare Worker 本機開發的資料
+.wrangler
+dist-worker

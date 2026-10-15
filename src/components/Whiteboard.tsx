@@ -10,6 +10,8 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
+import { applyOps, diffDocs, rebaseHistory } from '../collab/ops';
+import { useCollab, type CollabOptions } from '../collab/useCollab';
 import { BOARD_COLORS, BOARD_MAX_BYTES, CELL_COLORS, type BoardColor, type CellColor } from '../constants';
 import type { BoardDoc } from '../schema';
 import { I18nProvider, MESSAGES, useI18n, type Locale } from '../i18n';
@@ -97,6 +99,8 @@ export interface WhiteboardProps<R = unknown> {
   initial?: BoardDoc;
   /** 內容改變、停下來 0.6 秒後呼叫，關掉白板時也會把還沒存的存起來 */
   onSave: (doc: BoardDoc) => Promise<void> | void;
+  /** 每次內容改變就馬上呼叫（一開始也會呼叫一次），不用等存檔 */
+  onChange?: (doc: BoardDoc) => void;
   title: string;
   /** 標題上面的小字 */
   caption?: string;
@@ -114,6 +118,8 @@ export interface WhiteboardProps<R = unknown> {
   /** 顯示提示訊息（例如匯出失敗）；沒給就用白板自己的提示 */
   onNotice?: (message: string) => void;
   explain?: ExplainHooks<R>;
+  /** 一起編輯：連到共用房間，內容以房間的為準 */
+  collab?: CollabOptions;
 }
 
 /** 全螢幕的白板；內容由使用的一方存檔 */
@@ -130,6 +136,7 @@ export function Whiteboard<R = unknown>({ locale = 'en', onNotice, ...props }: W
 function Editor<R>({
   initial = m.EMPTY_DOC,
   onSave,
+  onChange,
   title,
   caption,
   badge,
@@ -138,6 +145,7 @@ function Editor<R>({
   onClose,
   exportName = 'whiteboard',
   explain,
+  collab,
 }: Omit<WhiteboardProps<R>, 'locale' | 'onNotice'>) {
   const { t } = useI18n();
   const toast = useNotice();
@@ -182,13 +190,51 @@ function Editor<R>({
   const paletteDrag = useRef<{ kind: m.PaletteKind; start: m.Point; dragging: boolean } | null>(null);
   const suppressClick = useRef(false);
 
+  // ---------- 一起編輯 ----------
+
+  /** 最後一次跟房間對齊時的內容：跟現在的內容比，就知道自己改了什麼要送出去 */
+  const synced = useRef(doc);
+  const latestDoc = useRef(doc);
+  useEffect(() => {
+    latestDoc.current = doc;
+  }, [doc]);
+  const room = useCollab(collab, {
+    getDoc: () => latestDoc.current,
+    onInit: (next) => {
+      synced.current = next;
+      latestDoc.current = next;
+      setHistory(m.initHistory(next));
+    },
+    onRemote: (ops) => {
+      synced.current = applyOps(synced.current, ops);
+      // 拖曳中是從開始時的內容算位置，別人的修改也要套上去，才不會被拖曳蓋掉
+      const g = gesture.current;
+      if (g && (g.kind === 'move' || g.kind === 'resize')) g.base = applyOps(g.base, ops);
+      // 復原紀錄的每個版本也套上，復原只會退回自己的動作
+      setHistory((h) => rebaseHistory(h, ops));
+    },
+  });
+  const sendOps = room.send;
+  // 畫面更新完、別的事件進來之前就送出：自己的修改不會跟別人的混在一起
+  useLayoutEffect(() => {
+    if (!collab) return;
+    const ops = diffDocs(synced.current, doc);
+    synced.current = doc;
+    if (ops.length > 0) sendOps(ops);
+  });
+
   // ---------- 存檔 ----------
 
   // 停下來 0.6 秒後存檔；關掉白板時把還沒存的存起來
   const save = useRef(onSave);
+  const change = useRef(onChange);
   useEffect(() => {
     save.current = onSave;
+    change.current = onChange;
   });
+  useEffect(() => {
+    change.current?.(doc);
+  }, [doc]);
   useEffect(() => {
     if (doc === savedDoc) return;
     const timer = window.setTimeout(() => {
@@ -851,6 +897,7 @@ function Editor<R>({
   };
 
   const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (collab) room.cursor(toWorld(e.clientX, e.clientY));
     if (!pointers.current.has(e.pointerId)) return;
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const g = gesture.current;
@@ -1298,6 +1345,7 @@ function Editor<R>({
           style={{ backgroundSize: `${grid}px ${grid}px`, backgroundPosition: `${view.x}px ${view.y}px` }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
+          onPointerLeave={() => collab && room.cursor(null)}
           onPointerUp={(e) => finishGesture(e, false)}
           onPointerCancel={(e) => finishGesture(e, true)}
         >
@@ -1439,6 +1487,25 @@ function Editor<R>({
                 />
               )}
             </svg>
+            {/* 一起編輯的人的游標；縮放時大小不變 */}
+            {room.status?.peers.map((peer) => {
+              const at = room.cursors.get(peer.id);
+              if (!at) return null;
+              return (
+                <div
+                  key={peer.id}
+                  className="board-peer-cursor"
+                  data-peer={peer.color}
+                  style={{ left: at.x, top: at.y, transform: `scale(${1 / view.zoom})` }}
+                  aria-hidden
+                >
+                  <svg width="16" height="20" viewBox="0 0 16 20">
+                    <path d="M1 1l13 9.5-6 .8-3.4 5.7z" />
+                  </svg>
+                  <span>{peer.name}</span>
+                </div>
+              );
+            })}
           </div>
 
           {playIndex === null && doc.elements.length === 0 && <p className="board-empty">{t.board.empty}</p>}

@@ -28,7 +28,10 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      # 共用房間的伺服器網址（repo 的 variable）；沒設定就不顯示「共用」
       - run: npm run build:app
+        env:
+          VITE_COLLAB_URL: ${{ vars.COLLAB_URL }}
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:

@@ -2138,3 +2138,73 @@ input.board-dp-head-input {
   line-height: 1.5;
   resize: vertical;
 }
+
+/* 一起編輯：別人的游標，箭頭尖端就在對方指的位置。每個人的顏色用 data-peer 指定，頭像也可以用 */
+.board-peer-cursor {
+  position: absolute;
+  z-index: 30;
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  pointer-events: none;
+  transform-origin: 0 0;
+  transition:
+    left 80ms linear,
+    top 80ms linear;
+}
+
+.board-peer-cursor svg {
+  flex: none;
+  fill: var(--peer);
+  stroke: var(--sheet);
+  stroke-width: 1.5;
+}
+
+.board-peer-cursor span {
+  margin-top: 14px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--peer);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-peer-cursor {
+    transition: none;
+  }
+}
+
+[data-peer='blue'] {
+  --peer: #2563eb;
+}
+
+[data-peer='red'] {
+  --peer: #dc2626;
+}
+
+[data-peer='green'] {
+  --peer: #16a34a;
+}
+
+[data-peer='orange'] {
+  --peer: #ea580c;
+}
+
+[data-peer='purple'] {
+  --peer: #9333ea;
+}
+
+[data-peer='teal'] {
+  --peer: #0d9488;
+}
+
+[data-peer='pink'] {
+  --peer: #db2777;
+}
+
+[data-peer='brown'] {
+  --peer: #92400e;
+}

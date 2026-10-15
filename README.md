@@ -2,7 +2,7 @@
 
 A whiteboard for data structures and algorithms, built from scratch in React and TypeScript.
 
-**Try it:** https://lego514.github.io/dsa-whiteboard/ (no sign-up; the board is saved in your browser)
+**Try it:** https://lego514.github.io/dsa-whiteboard/ (no sign-up; the board is saved in your browser). Press **Share** to get a link: everyone who opens it edits the same board live, with each person's cursor and name on the canvas.
 
 Drag arrays, pointers, stacks, queues, dicts, sets, 2D arrays, variables, binary trees, linked lists, graphs, heaps, recursion trees, DP tables, intervals, tables, text, code, and sticky notes onto a pannable, zoomable canvas to trace an idea by hand.
 
@@ -67,6 +67,7 @@ Built for working through LeetCode-style problems by hand: sliding windows, link
 - **Box selection**: drag across empty space to select everything inside, then move, duplicate, delete, or recolor it together. Copies keep pointers on their copied arrays and rewire arrows to the copied elements.
 - **Step playback**: "Record step" saves a snapshot of the board with an optional one-line note (writing it in English doubles as explanation practice). Playback steps through the snapshots with the arrow keys or plays them automatically; elements slide from one step to the next. You can continue editing from any step.
 - **Export image**: the board, or the step being played, is redrawn from its data as an SVG and saved as a 2× PNG.
+- **Live co-editing**: Share turns your board into a room at a link like `…/#room=k3f9x2…`. Up to 8 people edit it together and see each other's cursors. Undo only takes back your own changes. Edits made while offline are sent when the connection comes back. Your own board stays as it was; "Save a copy to my board" keeps the shared one. Rooms are kept for 7 days after the last person leaves.
 
 The interface is in English and Traditional Chinese.
 
@@ -103,9 +104,23 @@ The board takes the whole screen. You own the storage: `onSave` is called about 
 | `onClose` | Shows a Close button. |
 | `exportName` | File name for exported PNGs. |
 | `onNotice(message)` | Shows messages (such as a failed export) with your app's toasts instead of the board's own. |
+| `onChange(doc)` | Called right away on every change (and once when the board opens), without waiting for the save delay. |
+| `collab` | Joins a live room: `{ url, name, seed?, onStatus? }`. `url` is the room's WebSocket address on the collab server, `name` is shown next to your cursor, `seed` puts your board into the room if it's empty (for whoever creates it), and `onStatus` reports the connection and who's there. While in a room, the room's board is the one shown. |
 | `explain` | Adds an Explain button that plays the recorded steps. You provide `Session` (shown under the playback bar while explaining) and `Review` (shown over the board when done). LeetCode Coach uses it for spoken explanations with a timer, recording, and transcript. |
 
+`newRoomId()` makes a random room id and `ROOM_ID` checks one; `PEER_COLORS` lists the colors people get, and `[data-peer="blue"]` (and so on) sets `--peer` to that color for your own avatars.
+
 `dsa-whiteboard/schema` exports the zod schema for a board (`boardDocSchema`), its types, and the size limit, without React, so a server can validate boards before storing them.
+
+## Collab server
+
+Rooms run on a Cloudflare Worker with one Durable Object per room (`worker/`), which fits Cloudflare's free plan. Each change is sent as the new version of the elements it touched; the server applies them in the order they arrive and passes them on, so when two people change the same element at once, everyone ends up with the later one. The room's board is saved 2 seconds after a change and deleted 7 days after the last person leaves. Only pages from the origins in `ALLOWED_ORIGINS` (`wrangler.jsonc`) can connect.
+
+To deploy your own:
+
+1. Create a Cloudflare account and an API token with the "Edit Cloudflare Workers" template.
+2. Add the repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. The "Deploy collab server" workflow then deploys on every push to `main` that changes the server (or run it by hand). Without the secrets it skips itself.
+3. Set the repository variable `COLLAB_URL` to the Worker's address (such as `https://dsa-whiteboard-collab.<you>.workers.dev`) so the site build shows Share. Locally, put `VITE_COLLAB_URL=…` in `.env.local`.
 
 ## Develop
 
@@ -113,7 +128,8 @@ The board takes the whole screen. You own the storage: `onSave` is called about 
 npm install
 npm run dev          # the standalone site at http://localhost:5180
 npm test             # unit tests (Vitest)
-npm run test:e2e     # build the site, then run the Playwright tests (Chromium and iPhone WebKit)
+npm run test:e2e     # build the site, then run the Playwright tests (Chromium and iPhone WebKit) against a local collab server
+npm run worker:dev   # the collab server at http://localhost:8787, no Cloudflare account needed
 npm run lint
 npm run typecheck
 npm run build        # the package (dist/) and the site (dist-app/)
@@ -126,7 +142,11 @@ The first time, run `npx playwright install chromium webkit`.
 - `src/schema.ts`: the board format.
 - `src/i18n/`: interface text in both languages.
 - `src/styles/`: `board.css` for the board, `base.css` for apps without their own styles.
+- `src/collab/`: live co-editing in the browser: the messages, turning edits into changes and back, and the connection with its retries.
+- `worker/`: the collab server (Cloudflare Worker and Durable Object).
 - `app/`: the standalone site deployed to GitHub Pages.
+
+To try co-editing locally, run `npm run worker:dev` and start the site with `VITE_COLLAB_URL=http://localhost:8787` in `.env.local`, then open the shared link in a second browser profile.
 
 ## License
 

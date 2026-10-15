@@ -9,6 +9,9 @@ export {
   type WhiteboardProps,
 } from './components/Whiteboard';
 export type { Locale, Messages } from './i18n';
+export type { CollabStatus } from './collab/client';
+export { newRoomId, PEER_COLORS, ROOM_ID, type Peer, type PeerColor } from './collab/messages';
+export type { CollabOptions } from './collab/useCollab';
 export { EMPTY_DOC, MAX_STEPS, type BoardStep } from './lib/model';
 export { boardToSvg } from './lib/exportSvg';
 export * from './constants';

@@ -4,6 +4,8 @@ A whiteboard for data structures and algorithms, built from scratch in React and
 
 **Try it:** https://lego514.github.io/dsa-whiteboard/ (no sign-up; the board is saved in your browser). Press **Share** to get a link: everyone who opens it edits the same board live, with each person's cursor and name on the canvas.
 
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/board-dark.png"><img src="docs/images/board-light.png" alt="The whiteboard with the Tree DFS template: a binary tree, a node pointer on the root, and a stack"></picture>
+
 Drag arrays, pointers, stacks, queues, dicts, sets, 2D arrays, variables, binary trees, linked lists, graphs, heaps, recursion trees, DP tables, intervals, tables, text, code, and sticky notes onto a pannable, zoomable canvas to trace an idea by hand.
 
 Built for working through LeetCode-style problems by hand: sliding windows, linked list reversal, tree and graph traversals, heaps, backtracking, DP tables, and intervals. It started as the whiteboard in [LeetCode Coach](https://github.com/Lego514/leetcode-coach), which still uses it as a package.
@@ -69,6 +71,10 @@ Built for working through LeetCode-style problems by hand: sliding windows, link
 - **Export image**: the board, or the step being played, is redrawn from its data as an SVG and saved as a 2× PNG.
 - **Live co-editing**: Share turns your board into a room at a link like `…/#room=k3f9x2…`. Up to 8 people edit it together and see each other's cursors. Undo only takes back your own changes. Edits made while offline are sent when the connection comes back. Your own board stays as it was; "Save a copy to my board" keeps the shared one. Rooms are kept for 7 days after the last person leaves.
 
+  ![Two browser windows editing one shared board: Bob's cursor and name show up on Alice's board, the variable Bob drags in appears on both, and the pointer Alice moves follows on Bob's side](docs/images/co-editing.gif)
+
+  *Left: Alice. Right: Bob, who opened Alice's link.*
+
 The interface is in English and Traditional Chinese.
 
 ## Use it in a React app
@@ -132,6 +138,7 @@ npm run dev          # the standalone site at http://localhost:5180
 npm test             # unit tests (Vitest)
 npm run test:e2e     # build the site, then run the Playwright tests (Chromium and iPhone WebKit) against a local collab server
 npm run worker:dev   # the collab server at http://localhost:8787, no Cloudflare account needed
+npm run media        # rebuild, then regenerate the README screenshot and co-editing GIF in docs/images/
 npm run lint
 npm run typecheck
 npm run build        # the package (dist/) and the site (dist-app/)

@@ -12,5 +12,5 @@
     "noEmit": true,
     "strict": true
   },
-  "include": ["vite.config.ts", "vite.lib.config.ts", "playwright.config.ts", "e2e"]
+  "include": ["vite.config.ts", "vite.lib.config.ts", "playwright.config.ts", "playwright.media.config.ts", "e2e", "scripts/media"]
 }

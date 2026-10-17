@@ -24,6 +24,9 @@ import {
   type Interval,
   type RecursionNode,
 } from './model';
+import { isBits, parseBits, serializeBits } from './bits';
+import { parseTrie, serializeTrie } from './trie';
+import { parseUnionFind, serializeUnionFind } from './unionFind';
 
 // 用文字建立：直接貼題目給的範例，例如 nums = [2,7,11,15]、1->2->3、[3,9,20,null,null,15,7]、
 // n = 5, edges = [[0,1]]、{'a': 1}，不用一格一格輸入。
@@ -545,11 +548,13 @@ export type TextElement =
   | ElementOf<'table'>
   | ElementOf<'recursion'>
   | ElementOf<'dp'>
-  | ElementOf<'intervals'>;
+  | ElementOf<'intervals'>
+  | ElementOf<'unionFind'>
+  | ElementOf<'trie'>;
 
 /** 可以用文字建立的元件 */
 export function acceptsText(el: { type: string } | undefined): el is TextElement {
-  return ['list', 'tree', 'graph', 'table', 'recursion', 'dp', 'intervals'].includes(el?.type ?? '');
+  return ['list', 'tree', 'graph', 'table', 'recursion', 'dp', 'intervals', 'unionFind', 'trie'].includes(el?.type ?? '');
 }
 
 /** 目前內容的文字版，放進「用文字建立」的輸入框 */
@@ -563,11 +568,16 @@ export function structureText(el: TextElement): string {
       return serializeDp(el);
     case 'intervals':
       return serializeIntervals(el);
+    case 'unionFind':
+      return serializeUnionFind(el);
+    case 'trie':
+      return serializeTrie(el);
     case 'tree':
       return serializeTree(el);
     case 'table':
       return el.variant === 'dict' ? serializeDict(el) : serializeGrid(el);
     case 'list':
+      if (isBits(el)) return serializeBits(el);
       return el.variant === 'linked' ? serializeLinkedList(el.items) : serializeList(el);
   }
 }
@@ -591,6 +601,23 @@ export function applyStructureText(doc: BoardDoc, id: string, text: string): { d
     // 掃描線開著的話放回第一個起點
     const sweep = el.sweep === undefined ? undefined : Math.min(...parsed.items.map((item) => item.a));
     return { doc: updateElement<ElementOf<'intervals'>>(doc, id, { items: parsed.items, sweep }) };
+  }
+  // 並查集讀 n 和 edges（或 parent），名稱不改；union by rank 開著的話照 rank 合併
+  if (el?.type === 'unionFind') {
+    const parsed = parseUnionFind(text, !!el.rank);
+    if ('error' in parsed) return parsed;
+    return { doc: updateElement<ElementOf<'unionFind'>>(doc, id, { parent: parsed.parent, rank: parsed.rank, path: undefined }) };
+  }
+  if (el?.type === 'trie') {
+    const parsed = parseTrie(text);
+    if ('error' in parsed) return parsed;
+    return { doc: updateElement<ElementOf<'trie'>>(doc, id, { words: parsed.words, at: undefined }) };
+  }
+  if (isBits(el)) {
+    const parsed = parseBits(text);
+    if ('error' in parsed) return parsed;
+    const next = updateElement<ElementOf<'list'>>(doc, id, { items: parsed.items, colors: undefined, ...(parsed.name ? { label: parsed.name } : {}) });
+    return { doc: detachMissing(doc, next, id, (index) => index < parsed.items.length) };
   }
   // DP 表讀的是題目的整串輸入（text1 = ..., text2 = ...），名稱不拿來改表格的名字
   if (el?.type === 'dp') {

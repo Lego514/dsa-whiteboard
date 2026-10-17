@@ -6,9 +6,9 @@ A whiteboard for data structures and algorithms, built from scratch in React and
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/board-dark.png"><img src="docs/images/board-light.png" alt="The whiteboard with the Tree DFS template: a binary tree, a node pointer on the root, and a stack"></picture>
 
-Drag arrays, pointers, stacks, queues, dicts, sets, 2D arrays, variables, binary trees, linked lists, graphs, heaps, recursion trees, DP tables, intervals, tables, text, code, and sticky notes onto a pannable, zoomable canvas to trace an idea by hand.
+Drag arrays, pointers, stacks, queues, dicts, sets, 2D arrays, variables, binary trees, linked lists, graphs, heaps, recursion trees, Union-Find, tries, bits, DP tables, intervals, tables, text, code, and sticky notes onto a pannable, zoomable canvas to trace an idea by hand.
 
-Built for working through LeetCode-style problems by hand: sliding windows, linked list reversal, tree and graph traversals, heaps, backtracking, DP tables, and intervals. It started as the whiteboard in [LeetCode Coach](https://github.com/Lego514/leetcode-coach), which still uses it as a package.
+Built for working through LeetCode-style problems by hand: sliding windows, linked list reversal, tree and graph traversals, heaps, backtracking, Union-Find, tries, bit manipulation, DP tables, and intervals. It started as the whiteboard in [LeetCode Coach](https://github.com/Lego514/leetcode-coach), which still uses it as a package.
 
 ## Features
 
@@ -34,7 +34,7 @@ Built for working through LeetCode-style problems by hand: sliding windows, link
   - Push and Pop sift values into place by the heap rules; "Record each step for playback" saves every swap as a step, captioned like `swap 0 ↔ 2`.
   - Switch between a min-heap and a max-heap. Nodes that break the order turn red, and Heapify fixes them all at once.
   - Values compare as numbers when they are numbers. Up to 31 values (five levels).
-- **Recursion trees** draw one node per call, laid out top-down so each caller sits over its calls, for backtracking, memoized DP, and tries.
+- **Recursion trees** draw one node per call, laid out top-down so each caller sits over its calls, for backtracking and memoized DP.
   - Pick a call to add a child call, write its return value or the choice on the edge above it, or prune the branch (drawn dashed and faded).
   - "Color repeated calls" gives calls with the same label the same color, which shows what memoization would save.
   - A pointer steps through the calls in DFS order with ← →, and back to the caller with ↑, so a trace can be recorded step by step.
@@ -47,12 +47,21 @@ Built for working through LeetCode-style problems by hand: sliding windows, link
   - "Sort by start" is the first step of merging. Pick an interval to change its start or end, merge it with the next row when they overlap (touching ends count), mark it removed (dashed), or color it.
   - The sweep line stops at each start and end point and shows how many intervals are in progress there, counting starts but not ends, so its peak is the answer to Meeting Rooms II.
   - Up to 30 intervals.
+- **Union-Find** draws the parent array and the forest it describes: one tree per set, arrows from each node to its parent, and a loop on each root. Merged sets share a color, and the name shows how many sets there are.
+  - Pick a node to Find it (with path compression) or Union it with another node. The nodes a find walks through are outlined, and "Record each step for playback" saves the walk, the compression, and the merge as separate steps.
+  - Union by rank adds a rank row and puts the shorter tree under the taller one.
+  - Up to 20 nodes.
+- **Tries** grow from the words put into them, children in alphabetical order, with a green ring on letters that end a word.
+  - Insert walks the shared prefix first, then adds the rest. Search follows the letters as far as they go and says found, prefix only, or not found. Both can be recorded letter by letter.
+  - Pick a node to search its prefix or remove its word. Up to 30 words of 16 letters.
+- **Bits** draw a number as a row of 0s and 1s, with bit positions below and the decimal value and count of 1s beside the name.
+  - Click a bit to flip it. Shift left or right, clear the lowest 1 with `n & (n-1)`, or type a new number. Up to 32 bits.
 - **Code boxes** look and type like LeetCode's editor: a `Python3` header, line numbers, and Python colors in VS Code's light and dark themes, with no wrapping and the box sized to the code. New boxes start from a `class Solution:` template.
   - While editing, the colors stay on screen: a transparent text box sits exactly over the highlighted code. Tab and Shift+Tab indent and outdent, Enter keeps the indentation (one more level after a colon), and Backspace in the indentation removes a level.
 - **Code tracing** turns a code box into a dry run, the Test step of an interview.
   - "Trace line by line" highlights the line running. Move with ↑ ↓ or by clicking a line; blank lines are skipped.
   - With "Record each line" on, every move first saves the board as a step with the line that just ran highlighted. Update the variables and arrays beside it as you go, and playback replays the whole run, with room for a one-line note per step.
-- **Build from text**: arrays, stacks, queues, heaps, sets, dicts, 2D arrays, linked lists, trees, graphs, recursion trees, DP tables, and intervals can all be filled by pasting a problem's example instead of typing cell by cell:
+- **Build from text**: arrays, stacks, queues, heaps, sets, dicts, 2D arrays, linked lists, trees, graphs, recursion trees, Union-Find, tries, bits, DP tables, and intervals can all be filled by pasting a problem's example instead of typing cell by cell:
   - `nums = [2,7,11,15], target = 9` takes the first value and renames the element `nums`
   - `"abcabcbb"` splits into characters
   - `{'a': 1}` or JSON for dicts, and `[[1,0],[0,1]]` for grids
@@ -60,6 +69,7 @@ Built for working through LeetCode-style problems by hand: sliding windows, link
   - `n = 5, edges = [[0,1],[0,2]]` (with optional weights) or an adjacency list (0- or 1-based) for graphs
   - an indented outline for recursion trees, one call per line, such as `f(3) => 2` with `n-1 | f(2)` underneath (`|` puts a label on the edge, `=>` adds a return value); the output of the `tree` command also works
   - the problem's own input for DP tables: `text1 = "abcde", text2 = "ace"` makes a 6×4 table with the letters beside it, `m = 3, n = 7` a 3×7 grid, `n = 5` six cells, `coins = [1,2,5], amount = 11` twelve cells that look back 1, 2, and 5, and `s = "226"` or `nums = [...]` a row labeled with the characters or numbers
+  - `n = 5, edges = [[0,1],[1,2]]` (merged in order) or `parent = [0,0,1]` for Union-Find, `["apple","app"]` for tries, and `n = 11`, `0b1011`, or LeetCode's 32-character bit strings for bits
   - `intervals = [[1,3],[2,6]]` for intervals; a `newInterval = [4,8]` is added in yellow, and an employee `schedule` gets one color per person
 - **Other tools**:
   - rectangle and ellipse frames, which draw on top but stay click-through except their outline

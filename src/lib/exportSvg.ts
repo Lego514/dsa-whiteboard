@@ -56,6 +56,9 @@ import {
   type PointerTone,
   type Sizes,
 } from './model';
+import { bitPosition, bitsValue, isBits, onesCount } from './bits';
+import { TRIE_NODE, trieLayout, triePath, trieSearch } from './trie';
+import { ufArrowPath, ufColors, UF_HEAD_W, ufLayout, ufLoopPath, UF_NODE } from './unionFind';
 
 // 把白板畫成一張 SVG，再由畫面轉成 PNG 下載。
 // 不截圖畫面，而是照著資料重畫：版面和畫面上一樣，背景一律是白底淺色，貼到哪裡都清楚。
@@ -70,6 +73,10 @@ export interface ExportOptions {
   back: string;
   /** 掃描線下面寫的「t = 5：進行中 2 個」，跟著介面語言 */
   active?: (t: string, count: number) => string;
+  /** 位元列名稱旁的「= 11（3 個 1）」、並查集的「2 組」、字典樹的搜尋結果，跟著介面語言 */
+  bitsValue?: (value: number, ones: number) => string;
+  sets?: (n: number) => string;
+  trieResult?: (word: string, result: 'word' | 'prefix' | 'none') => string;
   padding?: number;
 }
 
@@ -177,6 +184,12 @@ function cellText(value: string, cx: number, cy: number, width: number, measure:
 
 function label(value: string, x: number, y: number): string {
   return value ? text(x, y + LABEL_H / 2, value, { size: 13, mono: true, bold: true, color: INK_2 }) : '';
+}
+
+/** 名稱後面接一段灰色的說明（位元列的值、並查集有幾組） */
+function labelWithNote(value: string, note: string, x: number, y: number, options: ExportOptions): string {
+  const width = value ? options.measure(value, `700 13px ${MONO}`) + 8 : 0;
+  return label(value, x, y) + text(x + width, y + LABEL_H / 2, note, { size: 12, color: INK_3 });
 }
 
 /** 鏈結串列：節點之間依方向畫箭頭，斷開的畫 ×，尾巴接 null 或接回某個節點 */
@@ -446,7 +459,9 @@ function drawHeap(el: ElementOf<'list'>, options: ExportOptions): string {
 function drawList(el: ElementOf<'list'>, options: ExportOptions): string {
   if (el.variant === 'linked') return drawLinked(el, options);
   if (el.variant === 'heap') return drawHeap(el, options);
-  const parts = [label(el.label, el.x, el.y)];
+  const parts = [
+    isBits(el) ? labelWithNote(el.label, (options.bitsValue ?? defaultBitsValue)(bitsValue(el), onesCount(el)), el.x, el.y, options) : label(el.label, el.x, el.y),
+  ];
   const n = el.items.length;
   const fill = (i: number) => (el.colors?.[i] ? CELL_FILLS[el.colors[i]!] : SHEET);
   if (el.variant === 'stack') {
@@ -468,9 +483,85 @@ function drawList(el: ElementOf<'list'>, options: ExportOptions): string {
         : rect(x, y, CELL, CELL, fill(i), INK_3);
     parts.push(box, cellText(value, x + CELL / 2, y + CELL / 2, CELL, options.measure));
     if (isIndexed(el)) {
-      const index = el.variant === 'queue' ? (i === 0 ? options.front : i === n - 1 ? options.back : '') : String(i);
+      const index = el.variant === 'queue' ? (i === 0 ? options.front : i === n - 1 ? options.back : '') : String(isBits(el) ? bitPosition(el, i) : i);
       parts.push(text(x + CELL / 2, y + CELL + INDEX_H / 2, index, { size: 11, mono: true, color: INK_3, anchor: 'middle' }));
     }
+  });
+  return parts.join('');
+}
+
+const defaultBitsValue = (value: number, ones: number) => `= ${value} (${ones} ${ones === 1 ? 'one' : 'ones'})`;
+
+/** 並查集：一片樹（箭頭指向父節點、根節點指回自己），下面是 parent 陣列和索引，有 rank 再一列；合併過的組同一個顏色 */
+function drawUnionFind(el: ElementOf<'unionFind'>, options: ExportOptions): string {
+  const layout = ufLayout(el);
+  const colors = ufColors(el);
+  const path = new Set(el.path ?? []);
+  const fill = (i: number) => (colors[i] ? CELL_FILLS[colors[i]!] : SHEET);
+  const sets = options.sets ?? ((n: number) => `${n} ${n === 1 ? 'set' : 'sets'}`);
+  const parts = [labelWithNote(el.label, sets(layout.roots.length), el.x, el.y, options)];
+  const at = (d: string) => d.replace(/(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/g, (_, x, y) => `${Number(x) + el.x} ${Number(y) + el.y}`);
+  const line = (d: string, color: string) => `<path d="${at(d)}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+  el.parent.forEach((p, i) => {
+    const from = layout.centers.get(i);
+    const to = layout.centers.get(p);
+    if (p === i || !from || !to || layout.roots.includes(i)) return;
+    parts.push(line(ufArrowPath(from, to), path.has(i) && path.has(p) ? PEN : INK_2));
+  });
+  for (const root of layout.roots) parts.push(line(ufLoopPath(layout.centers.get(root)!), INK_3));
+  for (const [i, c] of layout.centers) {
+    parts.push(
+      `<circle cx="${el.x + c.x}" cy="${el.y + c.y}" r="${UF_NODE / 2 - 1}" fill="${fill(i)}" stroke="${path.has(i) ? PEN : INK_2}" stroke-width="${path.has(i) ? 3 : 2}"/>`,
+      cellText(String(i), el.x + c.x, el.y + c.y, UF_NODE, options.measure),
+    );
+  }
+  const row = (head: string, top: number, values: readonly number[]) => {
+    const y = el.y + top;
+    parts.push(text(el.x, y + CELL / 2, head, { size: 12, mono: true, color: INK_3 }));
+    values.forEach((v, i) => {
+      const x = el.x + UF_HEAD_W + i * CELL;
+      parts.push(rect(x, y, CELL, CELL, fill(i), INK_3), cellText(String(v), x + CELL / 2, y + CELL / 2, CELL, options.measure));
+    });
+  };
+  row('parent', layout.arrayTop, el.parent);
+  el.parent.forEach((_, i) => {
+    const x = el.x + UF_HEAD_W + i * CELL;
+    parts.push(text(x + CELL / 2, el.y + layout.arrayTop + CELL + INDEX_H / 2, String(i), { size: 11, mono: true, color: INK_3, anchor: 'middle' }));
+  });
+  if (el.rank && layout.rankTop !== undefined) row('rank', layout.rankTop, el.rank);
+  return parts.join('');
+}
+
+/** 字典樹：根是灰色的小圓，一個字母一個節點，字的結尾畫粗框；正在找的路畫藍色 */
+function drawTrie(el: ElementOf<'trie'>, options: ExportOptions): string {
+  const layout = trieLayout(el);
+  const path = new Set(triePath(el, layout.nodes));
+  const r = TRIE_NODE / 2;
+  const parts = [label(el.label, el.x, el.y)];
+  if (el.at !== undefined) {
+    const result = trieSearch(el.words, el.at);
+    const write = options.trieResult ?? ((word: string, res: string) => `search("${word}"): ${res}`);
+    parts.push(text(el.x, el.y + LABEL_H + 9, write(el.at, result), { size: 12, color: result === 'none' ? STROKE_COLORS.red : result === 'word' ? GOOD : INK_2 }));
+  }
+  layout.nodes.forEach((node, i) => {
+    const c = layout.centers.get(i);
+    const p = layout.centers.get(node.parent);
+    if (!c || !p) return;
+    const d = Math.hypot(c.x - p.x, c.y - p.y) || 1;
+    const ux = (c.x - p.x) / d;
+    const uy = (c.y - p.y) / d;
+    parts.push(
+      `<line x1="${el.x + p.x + ux * r}" y1="${el.y + p.y + uy * r}" x2="${el.x + c.x - ux * r}" y2="${el.y + c.y - uy * r}" stroke="${path.has(i) ? PEN : INK_2}" stroke-width="${path.has(i) ? 3 : 2}"/>`,
+    );
+  });
+  layout.nodes.forEach((node, i) => {
+    const c = layout.centers.get(i)!;
+    const root = i === 0;
+    const fill = path.has(i) ? CELL_FILLS.yellow : root ? SHEET_2 : SHEET;
+    parts.push(
+      `<circle cx="${el.x + c.x}" cy="${el.y + c.y}" r="${r - 1}" fill="${fill}" stroke="${node.end ? GOOD : INK_2}" stroke-width="${node.end ? 3.5 : 2}"/>`,
+      node.char ? cellText(node.char, el.x + c.x, el.y + c.y, TRIE_NODE, options.measure) : '',
+    );
   });
   return parts.join('');
 }
@@ -640,6 +731,10 @@ function drawPlaced(doc: BoardDoc, el: Placed, sizes: Sizes | undefined, options
       return drawDp(el, options);
     case 'intervals':
       return drawIntervals(el, options);
+    case 'unionFind':
+      return drawUnionFind(el, options);
+    case 'trie':
+      return drawTrie(el, options);
     case 'pointer':
       return drawPointer(doc, el, options);
     case 'var':

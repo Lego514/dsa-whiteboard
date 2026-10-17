@@ -755,3 +755,103 @@ test('keeps the selection toolbar off the steps buttons on a narrow desktop', as
   await page.setViewportSize({ width: 860, height: 800 });
   await apart();
 });
+
+test('flips, shifts, and clears bits, and reads LeetCode’s 32-bit input', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Bits', exact: true }).click();
+  const bits = page.getByRole('group', { name: /^Bits n/ });
+  await expect(bits).toHaveAccessibleName('Bits n = 11 (3 ones): 00001011');
+  const selbar = page.getByRole('toolbar', { name: 'Selected element' });
+
+  // n & (n-1) 每次清掉最低位的 1
+  await selbar.getByRole('button', { name: 'n & (n-1)' }).click();
+  await expect(bits).toHaveAccessibleName('Bits n = 10 (2 ones): 00001010');
+  await selbar.getByRole('button', { name: 'Shift left << 1' }).click();
+  await expect(bits).toHaveAccessibleName('Bits n = 20 (2 ones): 00010100');
+
+  // 點一格，翻轉那一位（第 7 位是最左邊那格）
+  await bits.locator('[data-cell="0"]').click();
+  await expect(selbar.getByText('Bit 7')).toBeVisible();
+  await selbar.getByRole('button', { name: 'Flip this bit' }).click();
+  await expect(bits).toHaveAccessibleName('Bits n = 148 (3 ones): 10010100');
+
+  // 用文字建立：LeetCode 191 的 32 位寫法
+  // 點索引那一列（不是格子）改選整排；手機上元件比畫面寬，名稱可能在畫面外
+  await bits.locator('.board-indices span').nth(4).click();
+  await selbar.getByRole('button', { name: 'Build from text' }).click();
+  await selbar.getByRole('textbox', { name: 'Build from text' }).fill('n = 00000000000000000000000010000000');
+  await selbar.getByRole('button', { name: 'Apply' }).click();
+  await expect(bits).toHaveAccessibleName(/^Bits n = 128 \(1 one\): 0{24}10{7}$/);
+});
+
+test('merges a Union-Find from edges, finds with path compression, and unions by rank', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Union-Find', exact: true }).click();
+  const uf = page.getByRole('group', { name: /^Union-Find uf/ });
+  await expect(uf).toHaveAccessibleName('Union-Find uf (3 sets): parent = [0,0,1,3,4]');
+  const selbar = page.getByRole('toolbar', { name: 'Selected element' });
+
+  // 貼題目的邊，照順序合併
+  await selbar.getByRole('button', { name: 'Build from text' }).click();
+  await selbar.getByRole('textbox', { name: 'Build from text' }).fill('n = 6, edges = [[0,1],[1,2],[3,4]]');
+  await selbar.getByRole('button', { name: 'Apply' }).click();
+  await expect(uf).toHaveAccessibleName('Union-Find uf (3 sets): parent = [0,0,0,3,3,5]');
+
+  // 點節點 4，跟 2 合併，每一步記下來
+  await uf.locator('.board-uf-node[data-cell="4"]').click();
+  await expect(selbar.getByText('Node 4 (root 3)')).toBeVisible();
+  await selbar.getByRole('checkbox', { name: 'Record each step for playback' }).check();
+  // 2 的根（0）接到 4 的根（3）底下
+  await selbar.getByRole('combobox', { name: 'Union(4, …)' }).selectOption('2');
+  await expect(uf).toHaveAccessibleName('Union-Find uf (2 sets): parent = [3,0,0,3,3,5]');
+  // find(4)、find(2) 都只有一步（不用壓縮），再加上接起來那一步
+  await expect(page.getByRole('button', { name: 'Play all 3 steps from the start' })).toBeVisible();
+
+  // 已經同一組：跳出提示
+  await selbar.getByRole('combobox', { name: 'Union(4, …)' }).selectOption('1');
+  await expect(page.getByText('4 and 1 are already in the same set')).toBeVisible();
+  // 找 1 的根時順便把 1 壓縮到根底下
+  await expect(uf).toHaveAccessibleName('Union-Find uf (2 sets): parent = [3,3,0,3,3,5]');
+
+  // Find(2) 走 2 → 0 → 3，路徑壓縮把 2 直接接到根
+  await uf.locator('.board-uf-node[data-cell="2"]').click();
+  await selbar.getByRole('button', { name: 'Find(2)' }).click();
+  await expect(uf).toHaveAccessibleName('Union-Find uf (2 sets): parent = [3,3,3,3,3,5]');
+
+  // Union by rank 多一列 rank（從樹的高度算起）
+  await uf.locator('.board-uf-indices span').nth(3).click();
+  await selbar.getByRole('button', { name: 'Union by rank' }).click();
+  await expect(uf).toHaveAccessibleName('Union-Find uf (2 sets): parent = [3,3,3,3,3,5], rank = [0,0,0,1,0,0]');
+  await expect(uf.locator('.board-uf-row')).toHaveCount(2);
+});
+
+test('inserts and searches words in a trie, step by step', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Trie', exact: true }).click();
+  const trie = page.getByRole('group', { name: /^Trie trie/ });
+  await expect(trie).toHaveAccessibleName('Trie trie: app, apple, apt, bat');
+  await expect(trie.locator('.board-trie-node')).toHaveCount(10);
+  const selbar = page.getByRole('toolbar', { name: 'Selected element' });
+
+  // insert 先沿著 b、ba 走，再長出 d：記成三步
+  await selbar.getByRole('checkbox', { name: 'Record each step for playback' }).check();
+  await selbar.getByRole('textbox', { name: 'Word' }).fill('bad');
+  await selbar.getByRole('button', { name: 'Insert', exact: true }).click();
+  await expect(trie).toHaveAccessibleName('Trie trie (search("bad"): found): app, apple, apt, bat, bad');
+  await expect(trie.locator('.board-trie-node')).toHaveCount(11);
+  await expect(page.getByRole('button', { name: 'Play all 3 steps from the start' })).toBeVisible();
+
+  // 只是前綴、找不到
+  await selbar.getByRole('textbox', { name: 'Word' }).fill('ap');
+  await selbar.getByRole('button', { name: 'Search', exact: true }).click();
+  await expect(trie.getByText('search("ap"): prefix only')).toBeVisible();
+  await selbar.getByRole('textbox', { name: 'Word' }).fill('apx');
+  await selbar.getByRole('button', { name: 'Search', exact: true }).click();
+  await expect(trie.getByText('search("apx"): not found')).toBeVisible();
+  await expect(trie.locator('.board-trie-node[data-path]')).toHaveCount(3);
+
+  // 點字的結尾，把這個字拿掉
+  await trie.locator('.board-trie-node[title="Prefix apt"]').click();
+  await selbar.getByRole('button', { name: 'Remove "apt"' }).click();
+  await expect(trie).toHaveAccessibleName(/: app, apple, bat, bad$/);
+});

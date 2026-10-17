@@ -17,13 +17,16 @@ import { BOARD_COLORS, BOARD_MAX_BYTES, CELL_COLORS, type BoardColor, type CellC
 import type { BoardDoc } from '../schema';
 import { I18nProvider, MESSAGES, useI18n, type Locale } from '../i18n';
 import { boardToSvg, estimateWidth, type Measure } from '../lib/exportSvg';
+import { flipBit, isBits } from '../lib/bits';
 import * as m from '../lib/model';
 import { acceptsText, applyStructureText, structureText, type TextElement } from '../lib/structures';
 import { insertTemplate, TEMPLATES, type TemplateKind } from '../lib/templates';
+import { trieNodes } from '../lib/trie';
 import { ElementView } from './BoardElements';
 import { PlaybackBar, StepsWidget } from './BoardSteps';
 import { Dialog } from './Dialog';
 import { NoticeProvider, useNotice } from './Notice';
+import { BitsActions, TrieActions, TrieNodeActions, UnionFindActions, UnionFindNodeActions } from './StructureActions';
 
 // 自己寫的數位白板：左邊拖元件、中間是可以平移縮放的畫布、下面是工具列。
 // 元件是一般的 HTML（文字清楚、可以直接編輯），箭頭和筆跡畫在同一層的 SVG 上。
@@ -393,6 +396,13 @@ function Editor<R>({
   const pickedIv =
     cellSel && single?.type === 'intervals' && single.id === cellSel.id && cellSel.index < single.items.length ? single : undefined;
   const ivIndex = pickedIv ? cellSel!.index : undefined;
+  // 並查集、字典樹選了一個節點
+  const pickedUf =
+    cellSel && single?.type === 'unionFind' && single.id === cellSel.id && cellSel.index < single.parent.length ? single : undefined;
+  const ufNode = pickedUf ? cellSel!.index : undefined;
+  const pickedTrie =
+    cellSel && single?.type === 'trie' && single.id === cellSel.id && cellSel.index < trieNodes(single.words).nodes.length ? single : undefined;
+  const trieNode = pickedTrie ? cellSel!.index : undefined;
 
   const startEditing = (id: string, focus?: number) => {
     setHistory((h) => m.checkpoint(h));
@@ -636,7 +646,15 @@ function Editor<R>({
 
   /** 匯出目前畫面上的內容（播放時是那一步）成 PNG */
   const exportImage = async () => {
-    const out = boardToSvg(shownDoc, sizes, { measure: canvasMeasure(), front: t.board.front, back: t.board.back, active: t.board.intervals.active });
+    const out = boardToSvg(shownDoc, sizes, {
+      measure: canvasMeasure(),
+      front: t.board.front,
+      back: t.board.back,
+      active: t.board.intervals.active,
+      bitsValue: t.board.bits.value,
+      sets: t.board.unionFind.sets,
+      trieResult: t.board.trie.result,
+    });
     if (!out) return;
     try {
       const blob = await svgToPng(out.svg, out.width, out.height);
@@ -1376,14 +1394,18 @@ function Editor<R>({
                           ? recNode
                           : pickedIv?.id === el.id
                             ? ivIndex
-                            : undefined
+                            : pickedUf?.id === el.id
+                              ? ufNode
+                              : pickedTrie?.id === el.id
+                                ? trieNode
+                                : undefined
                 }
                 edgeIndex={pickedGraph?.id === el.id ? graphEdge : undefined}
                 onAddNode={canAdd(el) && el.type === 'graph' ? () => addGraphNodeTo(el) : undefined}
                 onPickEdge={canAdd(el) && el.type === 'graph' ? (index) => pickEdge(el, index) : undefined}
                 focusIndex={editingId === el.id ? editFocus : undefined}
                 onAddCell={
-                  canAdd(el) && el.type === 'list'
+                  canAdd(el) && el.type === 'list' && !isBits(el)
                     ? () => insertCellAt(el, el.items.length)
                     : canAdd(el) && el.type === 'intervals' && el.items.length < m.INTERVALS_MAX
                       ? () => addIntervalTo(el)
@@ -1582,6 +1604,10 @@ function Editor<R>({
                       onAddPointer={() => addPointerOn(pickedRec, recNode)}
                       onDelete={() => deleteCallAt(pickedRec, recNode)}
                     />
+                  ) : pickedUf && ufNode !== undefined ? (
+                    <UnionFindNodeActions el={pickedUf} index={ufNode} doc={doc} apply={apply} />
+                  ) : pickedTrie && trieNode !== undefined ? (
+                    <TrieNodeActions el={pickedTrie} index={trieNode} doc={doc} apply={apply} />
                   ) : pickedTree && pickedNode !== undefined ? (
                     <NodeActions
                       tree={pickedTree}
@@ -1600,6 +1626,7 @@ function Editor<R>({
                       onInsert={(index) => insertCellAt(pickedList, index)}
                       onDelete={() => deleteCellAt(pickedList, pickedIndex)}
                       onCycle={(index) => apply(m.setCycle(doc, pickedList.id, index))}
+                      onFlip={() => apply(flipBit(doc, pickedList.id, pickedIndex))}
                     />
                   ) : (
                     <>
@@ -1756,6 +1783,8 @@ interface CellActionsProps {
   onDelete: () => void;
   /** 鏈結串列：尾巴接回這一格；undefined 是拿掉環 */
   onCycle: (index: number | undefined) => void;
+  /** 位元列：翻轉這一位 */
+  onFlip: () => void;
 }
 
 /** 底色選擇：不上色和六種顏色 */
@@ -1789,11 +1818,26 @@ function CellColors({ current, onColor }: { current: CellColor | null; onColor: 
 }
 
 /** 選了陣列的一格：上底色、在這格加指標、在旁邊插入、刪掉這格；鏈結串列還可以讓尾巴接回這裡 */
-function CellActions({ list, index, onColor, onAddPointer, onInsert, onDelete, onCycle }: CellActionsProps) {
+function CellActions({ list, index, onColor, onAddPointer, onInsert, onDelete, onCycle, onFlip }: CellActionsProps) {
   const { t } = useI18n();
   const a = t.board.actions;
   // 堆疊是直的：index 越大越上面
   const vertical = list.variant === 'stack';
+  // 位元列的寬度用「改成數字」或「用文字建立」改，這裡只翻轉、上色、加指標
+  if (isBits(list)) {
+    return (
+      <>
+        <span className="board-selbar-title">{t.board.bits.bit(list.items.length - 1 - index)}</span>
+        <button type="button" className="btn btn-small" onClick={onFlip}>
+          {t.board.bits.flip}
+        </button>
+        <CellColors current={list.colors?.[index] ?? null} onColor={onColor} />
+        <button type="button" className="btn btn-small" onClick={onAddPointer}>
+          {a.addPointer}
+        </button>
+      </>
+    );
+  }
   return (
     <>
       <span className="board-selbar-title">{list.variant === 'linked' ? t.board.nodeLabel(list.items[index]) : t.board.cellLabel(index)}</span>
@@ -2143,9 +2187,14 @@ function textPlaceholder(el: TextElement, s: ReturnType<typeof useI18n>['t']['bo
       return s.dp;
     case 'intervals':
       return s.intervals;
+    case 'unionFind':
+      return s.unionFind;
+    case 'trie':
+      return s.trie;
     case 'table':
       return el.variant === 'dict' ? s.dict : s.grid;
     case 'list':
+      if (isBits(el)) return s.bits;
       return el.variant === 'linked' ? s.linked : s.list;
   }
 }
@@ -2168,6 +2217,13 @@ function SelectionActions({ el, doc, sizes, apply, onEdit }: SelectionActionsPro
   const structure = acceptsText(el) ? el : undefined;
   const heapControls = m.isHeap(el) && !writing ? <HeapActions key={el.id} el={el} doc={doc} apply={apply} /> : null;
   const dpControls = el.type === 'dp' && !writing ? <DpActions key={el.id} el={el} doc={doc} apply={apply} /> : null;
+  const structureControls = writing ? null : isBits(el) ? (
+    <BitsActions key={el.id} el={el} doc={doc} apply={apply} />
+  ) : el.type === 'unionFind' ? (
+    <UnionFindActions key={el.id} el={el} doc={doc} apply={apply} />
+  ) : el.type === 'trie' ? (
+    <TrieActions key={el.id} el={el} doc={doc} apply={apply} />
+  ) : null;
   if (structure && writing) return <StructureTextForm el={structure} doc={doc} sizes={sizes} apply={apply} onClose={() => setWriting(false)} />;
   if (structure) buttons.push([a.fromText, () => setWriting(true)]);
   if (el.type === 'graph') {
@@ -2233,6 +2289,7 @@ function SelectionActions({ el, doc, sizes, apply, onEdit }: SelectionActionsPro
     <>
       {heapControls}
       {dpControls}
+      {structureControls}
       {buttons.map(([label, onClick]) => (
         <button key={label} type="button" className="btn btn-small" onClick={onClick}>
           {label}
@@ -2643,6 +2700,33 @@ const PALETTE_ICONS: Record<m.PaletteKind, ReactNode> = {
       <rect x="9" y="17" width="6" height="4.5" rx="1.2" />
       <rect x="16.5" y="17" width="6" height="4.5" rx="1.2" />
       <path d="M12 7v10M10.5 7 4.5 17M13.5 7l6 10" />
+    </>
+  ),
+  // 一排格子寫著 1 0 1
+  bits: (
+    <>
+      <path d="M2.5 7.5h19v9h-19zM8.8 7.5v9M15.2 7.5v9M5.6 10v4M18.4 10v4" />
+      <ellipse cx="12" cy="12" rx="1.4" ry="2" />
+    </>
+  ),
+  // 兩個子節點的箭頭往上指向根，根上面一個指回自己的小圈
+  unionFind: (
+    <>
+      <circle cx="12" cy="8" r="2.4" />
+      <circle cx="5" cy="19" r="2.4" />
+      <circle cx="19" cy="19" r="2.4" />
+      <path d="M6.3 16.9 10.6 10.1M7.9 10.6l2.7-.5.4 2.7M17.7 16.9l-4.3-6.8M16.1 10.6l-2.7-.5-.4 2.7M10.4 6.2c-.8-3.5 4-3.5 3.2 0" />
+    </>
+  ),
+  // 根是小點，底下一個字母一個節點，最下面的是字的結尾（雙圈）
+  trie: (
+    <>
+      <circle cx="12" cy="3.5" r="1.5" />
+      <circle cx="6" cy="11.5" r="2.4" />
+      <circle cx="18" cy="11.5" r="2.4" />
+      <circle cx="6" cy="19.5" r="2.4" />
+      <circle cx="6" cy="19.5" r="0.8" />
+      <path d="M10.8 4.6 7.5 9.6M13.2 4.6l3.3 5M6 13.9v3.2" />
     </>
   ),
 };

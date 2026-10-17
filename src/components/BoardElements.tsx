@@ -57,7 +57,10 @@ import {
   type ElementOf,
   type Placed,
 } from '../lib/model';
+import { bitPosition, bitsValue, isBits, onesCount } from '../lib/bits';
 import { inlineRecursion, serializeGraph, serializeTree } from '../lib/structures';
+import { TRIE_NODE, trieLayout, triePath, trieSearch } from '../lib/trie';
+import { ufArrowPath, ufColors, UF_HEAD_W, ufLayout, ufLoopPath, UF_NODE, ufRoot } from '../lib/unionFind';
 
 // 白板上每一種元件的樣子。雙擊進入編輯時，格子和文字變成輸入框。
 
@@ -166,6 +169,10 @@ function Body({ el, editing, onChange, onDoneEditing, ...rest }: BodyProps) {
       return <DpBody el={el} editing={editing} onChange={onChange} onDoneEditing={onDoneEditing} {...rest} />;
     case 'intervals':
       return <IntervalsBody el={el} editing={editing} onChange={onChange} onDoneEditing={onDoneEditing} {...rest} />;
+    case 'unionFind':
+      return <UnionFindBody el={el} editing={editing} onChange={onChange} onDoneEditing={onDoneEditing} {...rest} />;
+    case 'trie':
+      return <TrieBody el={el} editing={editing} onChange={onChange} onDoneEditing={onDoneEditing} {...rest} />;
     case 'table':
       return <TableBody el={el} editing={editing} onChange={onChange} onDoneEditing={onDoneEditing} {...rest} />;
     case 'var':
@@ -415,9 +422,17 @@ function ListBody({
   const setItem = (index: number, value: string) => onChange({ items: el.items.map((v, i) => (i === index ? value : v)) });
   // 沒指定要編輯哪一格時，從最上面（堆疊）或第一格開始
   const focus = focusIndex ?? order[0];
+  const label = <Label value={el.label} editing={editing} onChange={(label) => onChange({ label })} onDone={onDoneEditing} />;
   return (
     <>
-      <Label value={el.label} editing={editing} onChange={(label) => onChange({ label })} onDone={onDoneEditing} />
+      {isBits(el) ? (
+        <div className="board-label-row">
+          {label}
+          <span className="board-label-note">{t.board.bits.value(bitsValue(el), onesCount(el))}</span>
+        </div>
+      ) : (
+        label
+      )}
       <div className="board-cells">
         {order.map((index) => (
           <Cell
@@ -429,7 +444,7 @@ function ListBody({
             picked={cellIndex === index}
             editing={editing}
             autoFocus={index === focus}
-            label={t.board.cellLabel(index)}
+            label={isBits(el) ? t.board.bits.bit(bitPosition(el, index)) : t.board.cellLabel(index)}
             snap={snapIndex === index}
             onChange={(value) => setItem(index, value)}
             onDone={onDoneEditing}
@@ -445,7 +460,7 @@ function ListBody({
         <div className="board-indices" aria-hidden>
           {el.items.map((_, i) => (
             <span key={i} style={{ width: CELL }}>
-              {el.variant === 'queue' ? (i === 0 ? t.board.front : i === el.items.length - 1 ? t.board.back : '') : i}
+              {el.variant === 'queue' ? (i === 0 ? t.board.front : i === el.items.length - 1 ? t.board.back : '') : isBits(el) ? bitPosition(el, i) : i}
             </span>
           ))}
         </div>
@@ -915,6 +930,126 @@ function DpBody({ el, editing, focusIndex, onAddRow, onAddCol, onChange, onDoneE
 }
 
 /** 堆積：上面是完全二元樹，下面是同一份資料的陣列；比父節點更該在上面的節點標紅 */
+/**
+ * 並查集：上面一片樹（箭頭從子節點指向父節點，根節點指回自己），下面同一份資料的 parent 陣列。
+ * 合併過的組上同一個顏色；最近一次 find 走過的節點加粗框。點樹上的節點或陣列的格子都是選那個節點
+ */
+function UnionFindBody({ el, editing, cellIndex, onChange, onDoneEditing }: { el: ElementOf<'unionFind'> } & Omit<BodyProps, 'el'>) {
+  const { t } = useI18n();
+  const u = t.board.unionFind;
+  const layout = ufLayout(el);
+  const colors = ufColors(el);
+  const path = new Set(el.path ?? []);
+  const r = UF_NODE / 2;
+  const data = (i: number) => ({
+    'data-cell': i,
+    'data-color': colors[i] ?? undefined,
+    'data-picked': cellIndex === i || undefined,
+    'data-path': path.has(i) || undefined,
+  });
+  const row = (head: string, top: number, values: readonly number[]) => (
+    <div className="board-uf-row" style={{ top }}>
+      <span className="board-uf-row-head" style={{ width: UF_HEAD_W }}>
+        {head}
+      </span>
+      <div className="board-cells">
+        {values.map((v, i) => (
+          <span key={i} className="board-cell" style={{ width: CELL, height: CELL }} title={`${head}[${i}] = ${v}`} {...data(i)}>
+            {v}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+  return (
+    <>
+      <div className="board-label-row">
+        <Label value={el.label} editing={editing} onChange={(label) => onChange({ label })} onDone={onDoneEditing} />
+        <span className="board-label-note">{u.sets(layout.roots.length)}</span>
+      </div>
+      <svg className="board-uf-edges" width={layout.w} height={layout.arrayTop} aria-hidden>
+        {el.parent.map((p, i) => {
+          const from = layout.centers.get(i);
+          const to = layout.centers.get(p);
+          if (p === i || !from || !to || layout.roots.includes(i)) return null;
+          return <path key={i} d={ufArrowPath(from, to)} data-path={(path.has(i) && path.has(p)) || undefined} />;
+        })}
+        {layout.roots.map((root) => (
+          <path key={`loop${root}`} d={ufLoopPath(layout.centers.get(root)!)} />
+        ))}
+      </svg>
+      {[...layout.centers].map(([i, c]) => (
+        <span
+          key={i}
+          className="board-cell board-tree-node board-uf-node"
+          style={{ left: c.x - r, top: c.y - r, width: UF_NODE, height: UF_NODE }}
+          title={u.node(i, ufRoot(el.parent, i))}
+          {...data(i)}
+        >
+          {i}
+        </span>
+      ))}
+      {row(u.parent, layout.arrayTop, el.parent)}
+      <div className="board-indices board-uf-indices" style={{ top: layout.arrayTop + CELL, left: UF_HEAD_W }} aria-hidden>
+        {el.parent.map((_, i) => (
+          <span key={i} style={{ width: CELL }}>
+            {i}
+          </span>
+        ))}
+      </div>
+      {el.rank && layout.rankTop !== undefined && row(u.rank, layout.rankTop, el.rank)}
+    </>
+  );
+}
+
+/**
+ * 字典樹：根節點在上面，每個節點一個字母，同一層依字母排；字結束的字母畫粗框。
+ * 正在找的字走得到的路標出來，名稱底下寫找到、只是前綴或找不到
+ */
+function TrieBody({ el, editing, cellIndex, onChange, onDoneEditing }: { el: ElementOf<'trie'> } & Omit<BodyProps, 'el'>) {
+  const { t } = useI18n();
+  const layout = trieLayout(el);
+  const path = new Set(triePath(el, layout.nodes));
+  const r = TRIE_NODE / 2;
+  return (
+    <>
+      <Label value={el.label} editing={editing} onChange={(label) => onChange({ label })} onDone={onDoneEditing} />
+      {el.at !== undefined && (
+        <span className="board-trie-result" data-result={trieSearch(el.words, el.at)}>
+          {t.board.trie.result(el.at, trieSearch(el.words, el.at))}
+        </span>
+      )}
+      <svg className="board-tree-edges" width={layout.w} height={layout.h} aria-hidden>
+        {layout.nodes.map((node, i) => {
+          const c = layout.centers.get(i);
+          const p = layout.centers.get(node.parent);
+          if (!c || !p) return null;
+          const [a, b] = trimSegment(p, c, r);
+          return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} className={path.has(i) ? 'board-trie-path-edge' : undefined} />;
+        })}
+      </svg>
+      {layout.nodes.map((node, i) => {
+        const c = layout.centers.get(i)!;
+        return (
+          <span
+            key={i}
+            className="board-cell board-tree-node board-trie-node"
+            style={{ left: c.x - r, top: c.y - r, width: TRIE_NODE, height: TRIE_NODE }}
+            title={t.board.trie.node(node.prefix)}
+            data-cell={i}
+            data-root={i === 0 || undefined}
+            data-end={node.end || undefined}
+            data-path={path.has(i) || undefined}
+            data-picked={cellIndex === i || undefined}
+          >
+            {node.char}
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
 function HeapBody({ el, editing, snapIndex, cellIndex, focusIndex, onChange, onDoneEditing }: { el: ElementOf<'list'> } & Omit<BodyProps, 'el'>) {
   const { t } = useI18n();
   const layout = heapLayout(el);
@@ -1232,6 +1367,7 @@ function describe(el: Placed, doc: BoardDoc, t: ReturnType<typeof useI18n>['t'])
       if (el.variant === 'heap') {
         return `${t.board.kinds.heap} ${el.label} (${el.order === 'max' ? t.board.heap.max : t.board.heap.min}): ${el.items.join(', ')}`;
       }
+      if (isBits(el)) return `${t.board.kinds.bits} ${el.label} ${t.board.bits.value(bitsValue(el), onesCount(el))}: ${el.items.join('')}`;
       return `${t.board.kinds[el.variant]} ${el.label}: ${el.items.join(el.variant === 'linked' ? ' → ' : ', ')}`;
     case 'tree':
       return `${t.board.kinds.binaryTree} ${el.label}: ${serializeTree(el)}`;
@@ -1243,6 +1379,14 @@ function describe(el: Placed, doc: BoardDoc, t: ReturnType<typeof useI18n>['t'])
       const items = el.items.map((item) => `${intervalText(item)}${item.removed ? ' ✕' : ''}`).join(', ');
       const sweep = el.sweep === undefined ? '' : ` (${t.board.intervals.active(formatValue(el.sweep), activeAt(el, el.sweep))})`;
       return `${t.board.kinds.intervals} ${el.label}${sweep}: ${items}`;
+    }
+    case 'unionFind': {
+      const rank = el.rank ? `, rank = [${el.rank.join(',')}]` : '';
+      return `${t.board.kinds.unionFind} ${el.label} (${t.board.unionFind.sets(ufLayout(el).roots.length)}): parent = [${el.parent.join(',')}]${rank}`;
+    }
+    case 'trie': {
+      const search = el.at === undefined ? '' : ` (${t.board.trie.result(el.at, trieSearch(el.words, el.at))})`;
+      return `${t.board.kinds.trie} ${el.label}${search}: ${el.words.join(', ')}`;
     }
     case 'dp': {
       const grid = el.cells.map((row) => row.map((v) => v || '·').join(' ')).join('; ');

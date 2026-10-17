@@ -1517,16 +1517,6 @@ function Editor<R>({
 
           {playIndex === null && doc.elements.length === 0 && <p className="board-empty">{t.board.empty}</p>}
 
-          {playIndex === null && (
-            <StepsWidget
-              count={steps.length}
-              full={steps.length >= m.MAX_STEPS}
-              onCapture={captureCurrentStep}
-              onPlay={() => startPlayback(0)}
-              onExplain={explain ? startExplain : undefined}
-            />
-          )}
-
           {playIndex !== null && (
             <PlaybackBar
               steps={steps}
@@ -1544,85 +1534,97 @@ function Editor<R>({
             />
           )}
 
-          {playIndex === null && tool === 'select' && selected.size > 0 && (
-            <div className="board-selbar" role="toolbar" aria-label={t.board.selectionLabel} data-ui>
-              {pickedGraph && graphEdge !== undefined ? (
-                <EdgeActions
-                  key={`${pickedGraph.id}:${graphEdge}`}
-                  graph={pickedGraph}
-                  index={graphEdge}
-                  onChange={(patch) => apply(m.updateGraphEdge(doc, pickedGraph.id, graphEdge, patch))}
-                  onDelete={() => deleteEdgeAt(pickedGraph, graphEdge)}
-                />
-              ) : pickedGraph && graphNode !== undefined ? (
-                <GraphNodeActions
-                  graph={pickedGraph}
-                  index={graphNode}
-                  onColor={(color) => apply(m.setGraphColor(doc, pickedGraph.id, graphNode, color))}
-                  onAddPointer={() => addPointerOn(pickedGraph, graphNode)}
-                  onConnect={(to) => apply(m.addGraphEdge(doc, pickedGraph.id, graphNode, to))}
-                  onDelete={() => deleteGraphNodeAt(pickedGraph, graphNode)}
-                />
-              ) : pickedIv && ivIndex !== undefined ? (
-                <IntervalActions
-                  key={`${pickedIv.id}:${ivIndex}`}
-                  el={pickedIv}
-                  index={ivIndex}
-                  onChange={(patch) => apply(m.updateInterval(doc, pickedIv.id, ivIndex, patch))}
-                  onMerge={() => apply(m.mergeWithNext(doc, pickedIv.id, ivIndex))}
-                  onDelete={() => deleteIntervalAt(pickedIv, ivIndex)}
-                />
-              ) : pickedRec && recNode !== undefined ? (
-                <RecursionNodeActions
-                  key={`${pickedRec.id}:${recNode}`}
-                  tree={pickedRec}
-                  index={recNode}
-                  onChange={(patch) => apply(m.updateRecursionNode(doc, pickedRec.id, recNode, patch))}
-                  onAddChild={() => addCallAt(pickedRec, recNode)}
-                  onAddPointer={() => addPointerOn(pickedRec, recNode)}
-                  onDelete={() => deleteCallAt(pickedRec, recNode)}
-                />
-              ) : pickedTree && pickedNode !== undefined ? (
-                <NodeActions
-                  tree={pickedTree}
-                  index={pickedNode}
-                  onColor={(color) => apply(m.setNodeColor(doc, pickedTree.id, pickedNode, color))}
-                  onAddPointer={() => addPointerOn(pickedTree, pickedNode)}
-                  onAddChild={(index) => addChildAt(pickedTree, index)}
-                  onDelete={() => deleteNodeAt(pickedTree, pickedNode)}
-                />
-              ) : pickedList && pickedIndex !== undefined ? (
-                <CellActions
-                  list={pickedList}
-                  index={pickedIndex}
-                  onColor={(color) => apply(m.setCellColor(doc, pickedList.id, pickedIndex, color))}
-                  onAddPointer={() => addPointerOn(pickedList, pickedIndex)}
-                  onInsert={(index) => insertCellAt(pickedList, index)}
-                  onDelete={() => deleteCellAt(pickedList, pickedIndex)}
-                  onCycle={(index) => apply(m.setCycle(doc, pickedList.id, index))}
-                />
-              ) : (
-                <>
-                  {selected.size > 1 && <span className="board-selbar-title">{t.board.selectedCount(selected.size)}</span>}
-                  {pair && (
-                    <button type="button" className="btn btn-small" onClick={() => frameBetween(pair)}>
-                      {t.board.actions.frameBetween}
-                    </button>
+          {/* 上方一排：左邊是逐步播放，選取列放在中間，空間不夠時讓開，不會蓋住左邊 */}
+          {playIndex === null && (
+            <div className="board-top">
+              <StepsWidget
+                count={steps.length}
+                full={steps.length >= m.MAX_STEPS}
+                onCapture={captureCurrentStep}
+                onPlay={() => startPlayback(0)}
+                onExplain={explain ? startExplain : undefined}
+              />
+              {tool === 'select' && selected.size > 0 && (
+                <div className="board-selbar" role="toolbar" aria-label={t.board.selectionLabel} data-ui>
+                  {pickedGraph && graphEdge !== undefined ? (
+                    <EdgeActions
+                      key={`${pickedGraph.id}:${graphEdge}`}
+                      graph={pickedGraph}
+                      index={graphEdge}
+                      onChange={(patch) => apply(m.updateGraphEdge(doc, pickedGraph.id, graphEdge, patch))}
+                      onDelete={() => deleteEdgeAt(pickedGraph, graphEdge)}
+                    />
+                  ) : pickedGraph && graphNode !== undefined ? (
+                    <GraphNodeActions
+                      graph={pickedGraph}
+                      index={graphNode}
+                      onColor={(color) => apply(m.setGraphColor(doc, pickedGraph.id, graphNode, color))}
+                      onAddPointer={() => addPointerOn(pickedGraph, graphNode)}
+                      onConnect={(to) => apply(m.addGraphEdge(doc, pickedGraph.id, graphNode, to))}
+                      onDelete={() => deleteGraphNodeAt(pickedGraph, graphNode)}
+                    />
+                  ) : pickedIv && ivIndex !== undefined ? (
+                    <IntervalActions
+                      key={`${pickedIv.id}:${ivIndex}`}
+                      el={pickedIv}
+                      index={ivIndex}
+                      onChange={(patch) => apply(m.updateInterval(doc, pickedIv.id, ivIndex, patch))}
+                      onMerge={() => apply(m.mergeWithNext(doc, pickedIv.id, ivIndex))}
+                      onDelete={() => deleteIntervalAt(pickedIv, ivIndex)}
+                    />
+                  ) : pickedRec && recNode !== undefined ? (
+                    <RecursionNodeActions
+                      key={`${pickedRec.id}:${recNode}`}
+                      tree={pickedRec}
+                      index={recNode}
+                      onChange={(patch) => apply(m.updateRecursionNode(doc, pickedRec.id, recNode, patch))}
+                      onAddChild={() => addCallAt(pickedRec, recNode)}
+                      onAddPointer={() => addPointerOn(pickedRec, recNode)}
+                      onDelete={() => deleteCallAt(pickedRec, recNode)}
+                    />
+                  ) : pickedTree && pickedNode !== undefined ? (
+                    <NodeActions
+                      tree={pickedTree}
+                      index={pickedNode}
+                      onColor={(color) => apply(m.setNodeColor(doc, pickedTree.id, pickedNode, color))}
+                      onAddPointer={() => addPointerOn(pickedTree, pickedNode)}
+                      onAddChild={(index) => addChildAt(pickedTree, index)}
+                      onDelete={() => deleteNodeAt(pickedTree, pickedNode)}
+                    />
+                  ) : pickedList && pickedIndex !== undefined ? (
+                    <CellActions
+                      list={pickedList}
+                      index={pickedIndex}
+                      onColor={(color) => apply(m.setCellColor(doc, pickedList.id, pickedIndex, color))}
+                      onAddPointer={() => addPointerOn(pickedList, pickedIndex)}
+                      onInsert={(index) => insertCellAt(pickedList, index)}
+                      onDelete={() => deleteCellAt(pickedList, pickedIndex)}
+                      onCycle={(index) => apply(m.setCycle(doc, pickedList.id, index))}
+                    />
+                  ) : (
+                    <>
+                      {selected.size > 1 && <span className="board-selbar-title">{t.board.selectedCount(selected.size)}</span>}
+                      {pair && (
+                        <button type="button" className="btn btn-small" onClick={() => frameBetween(pair)}>
+                          {t.board.actions.frameBetween}
+                        </button>
+                      )}
+                      {single?.type === 'text' && single.variant === 'code' && single.line !== undefined && (
+                        <CodeTraceActions el={single} doc={doc} apply={apply} record={traceRecord} onRecord={setTraceRecord} />
+                      )}
+                      {single && <SelectionActions key={single.id} el={single} doc={doc} sizes={sizes} apply={apply} onEdit={() => startEditing(single.id)} />}
+                      {/* 箭頭和範圍框要連著的東西一起選才複製得出來 */}
+                      {[...selected].some((id) => !['arrow', 'range'].includes(m.findElement(doc, id)?.type ?? '')) && (
+                        <button type="button" className="btn btn-small" onClick={duplicateSelected}>
+                          {t.board.actions.duplicate}
+                        </button>
+                      )}
+                      <button type="button" className="btn btn-small btn-danger" onClick={removeSelected}>
+                        {t.board.actions.delete}
+                      </button>
+                    </>
                   )}
-                  {single?.type === 'text' && single.variant === 'code' && single.line !== undefined && (
-                    <CodeTraceActions el={single} doc={doc} apply={apply} record={traceRecord} onRecord={setTraceRecord} />
-                  )}
-                  {single && <SelectionActions key={single.id} el={single} doc={doc} sizes={sizes} apply={apply} onEdit={() => startEditing(single.id)} />}
-                  {/* 箭頭和範圍框要連著的東西一起選才複製得出來 */}
-                  {[...selected].some((id) => !['arrow', 'range'].includes(m.findElement(doc, id)?.type ?? '')) && (
-                    <button type="button" className="btn btn-small" onClick={duplicateSelected}>
-                      {t.board.actions.duplicate}
-                    </button>
-                  )}
-                  <button type="button" className="btn btn-small btn-danger" onClick={removeSelected}>
-                    {t.board.actions.delete}
-                  </button>
-                </>
+                </div>
               )}
             </div>
           )}

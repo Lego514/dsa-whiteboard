@@ -1267,6 +1267,46 @@ textarea.board-text-input {
   font-variant-numeric: tabular-nums;
 }
 
+/* 上方一排：手機上不排（逐步播放在左上、選取列在下面），所以預設不產生外框 */
+.board-top {
+  display: contents;
+}
+
+/* 桌機：逐步播放在左、選取列在中間。三欄的左右兩欄平分剩下的空間，
+   選取列放得下時正好在畫布中間；太寬時往右讓開，再不夠就換行，不會蓋住逐步播放 */
+@media (min-width: 761px) {
+  .board-top {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    left: 12px;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: minmax(max-content, 1fr) auto 1fr;
+    align-items: start;
+    gap: 8px;
+    pointer-events: none;
+  }
+
+  .board-top > * {
+    pointer-events: auto;
+  }
+
+  .board-top .board-steps-widget {
+    position: static;
+    grid-column: 1;
+    justify-self: start;
+  }
+
+  .board-top .board-selbar {
+    position: static;
+    grid-column: 2;
+    width: auto;
+    max-width: none;
+    margin: 0;
+  }
+}
+
 .board-playback {
   position: absolute;
   right: 0;

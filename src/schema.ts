@@ -28,7 +28,8 @@ export const boardElementSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('list'),
     ...placed,
-    variant: z.enum(['array', 'stack', 'queue', 'set', 'linked', 'heap']),
+    /** bits 是一排 0/1（位元運算），第一格是最高位 */
+    variant: z.enum(['array', 'stack', 'queue', 'set', 'linked', 'heap', 'bits']),
     label: text(40),
     items: z.array(cell).max(64),
     /** 每一格的底色，跟 items 一一對應；沒有上色就沒有這一項 */
@@ -167,6 +168,30 @@ export const boardElementSchema = z.discriminatedUnion('type', [
       )
       .max(30),
     sweep: z.number().min(-1e9).max(1e9).optional(),
+  }),
+  /**
+   * 並查集：節點是 0 到 n-1，parent[i] 是 i 的父節點，根節點指向自己；同一份資料畫成一片樹和 parent 陣列。
+   * 有 rank 時合併照 rank（union by rank）；path 是最近一次 find 走過的節點，畫面上標出來
+   */
+  z.object({
+    type: z.literal('unionFind'),
+    ...placed,
+    label: text(40),
+    parent: z
+      .array(z.number().int().min(0).max(19))
+      .min(1)
+      .max(20)
+      .refine((parent) => parent.every((p) => p < parent.length), 'parents are nodes'),
+    rank: z.array(z.number().int().min(0).max(19)).max(20).optional(),
+    path: z.array(z.number().int().min(0).max(19)).max(20).optional(),
+  }),
+  /** 字典樹：存放進去的字，樹由這些字長出來（同一層依字母排）；at 是正在找的字或前綴，路徑標出來 */
+  z.object({
+    type: z.literal('trie'),
+    ...placed,
+    label: text(40),
+    words: z.array(text(16)).max(30),
+    at: text(16).optional(),
   }),
   /** 範圍框：框住同一個陣列上兩個指標之間的格子，指標移動時跟著變（滑動視窗）；位置由指標決定，不存座標 */
   z.object({

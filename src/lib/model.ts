@@ -1,5 +1,7 @@
 import type { BoardColor, CellColor } from '../constants';
 import type { BoardDoc, BoardElement } from '../schema';
+import { trieLayout } from './trie';
+import { ufLayout } from './unionFind';
 
 // 白板的資料模型與純函式：建立元件、排版尺寸、指標吸附、移動、刪除、箭頭端點、橡皮擦、復原紀錄。
 // 畫面只負責把這裡算好的結果畫出來，所以這些邏輯都能單獨測試。
@@ -66,9 +68,9 @@ export function isPlaced(el: BoardElement): el is Placed {
   return el.type !== 'arrow' && el.type !== 'stroke' && el.type !== 'range';
 }
 
-/** 陣列、佇列和堆積有索引，格子下面標 0、1、2… */
+/** 陣列、佇列、堆積和位元列有索引，格子下面標 0、1、2…（位元列標第幾位） */
 export function isIndexed(el: BoardElement): el is ElementOf<'list'> {
-  return el.type === 'list' && (el.variant === 'array' || el.variant === 'queue' || el.variant === 'heap');
+  return el.type === 'list' && (el.variant === 'array' || el.variant === 'queue' || el.variant === 'heap' || el.variant === 'bits');
 }
 
 export function isHeap(el: BoardElement | undefined): el is ElementOf<'list'> {
@@ -146,6 +148,14 @@ export function sizeOf(el: Placed, measured?: { w: number; h: number }): { w: nu
     }
     case 'intervals': {
       const { w, h } = intervalsLayout(el);
+      return { w, h };
+    }
+    case 'unionFind': {
+      const { w, h } = ufLayout(el);
+      return { w, h };
+    }
+    case 'trie': {
+      const { w, h } = trieLayout(el);
       return { w, h };
     }
     case 'table': {
@@ -310,17 +320,20 @@ export type PaletteKind =
   | 'treeNode'
   | 'listNode'
   | 'graphNode'
-  | 'table';
+  | 'table'
+  | 'bits'
+  | 'unionFind'
+  | 'trie';
 
 export type PaletteGroup = 'linear' | 'nodes' | 'lookup' | 'notes';
 
 /**
- * 元件庫依刷題時用到的頻率排，每組一列四個（節點多一個遞迴樹）。
+ * 元件庫依刷題時用到的頻率排，一列四個；有五個以上的組，第二列還有空位，後來加的元件放在那裡不會多一列。
  * 標題併進文字（選取後可以切換），單一的樹節點和串列節點換成整棵樹、整條串列；舊白板上的照樣顯示。
  */
 export const PALETTE: { group: PaletteGroup; kinds: PaletteKind[] }[] = [
-  { group: 'linear', kinds: ['array', 'pointer', 'stack', 'queue', 'intervals'] },
-  { group: 'nodes', kinds: ['binaryTree', 'linkedList', 'graph', 'heap', 'recursionTree'] },
+  { group: 'linear', kinds: ['array', 'pointer', 'stack', 'queue', 'intervals', 'bits'] },
+  { group: 'nodes', kinds: ['binaryTree', 'linkedList', 'graph', 'heap', 'recursionTree', 'unionFind', 'trie'] },
   { group: 'lookup', kinds: ['dict', 'set', 'grid', 'dpTable', 'table'] },
   { group: 'notes', kinds: ['text', 'code', 'sticky', 'var'] },
 ];
@@ -439,6 +452,14 @@ export function createElement(kind: PaletteKind, at: Point, id: string, texts: D
       return { type: 'node', ...placed, variant: 'list', value: '1' };
     case 'graphNode':
       return { type: 'node', ...placed, variant: 'graph', value: 'A' };
+    case 'bits':
+      // Number of 1 Bits 的範例：11 = 0b1011
+      return { type: 'list', ...placed, variant: 'bits', label: 'n', items: ['0', '0', '0', '0', '1', '0', '1', '1'] };
+    case 'unionFind':
+      // Number of Connected Components 的範例做到一半：0-1-2 已經連起來，3、4 還沒
+      return { type: 'unionFind', ...placed, label: 'uf', parent: [0, 0, 1, 3, 4] };
+    case 'trie':
+      return { type: 'trie', ...placed, label: 'trie', words: ['app', 'apple', 'apt', 'bat'] };
   }
 }
 

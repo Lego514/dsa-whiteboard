@@ -2384,3 +2384,124 @@ input.board-dp-head-input {
     display: none;
   }
 }
+
+/* ---------- 名稱旁邊的說明（位元列的值、並查集有幾組） ---------- */
+.board-label-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  height: 22px;
+}
+
+.board-label-row .board-label {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.board-label-row input.board-label-input {
+  flex: 1 1 auto;
+}
+
+.board-label-note {
+  flex: none;
+  color: var(--ink-3);
+  font-size: 12px;
+  line-height: 22px;
+  white-space: nowrap;
+}
+
+/* ---------- 並查集 ---------- */
+.board-uf-edges {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.board-uf-edges path {
+  fill: none;
+  stroke: var(--ink-2);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* find 走過的路：藍色加粗 */
+.board-uf-edges path[data-path] {
+  stroke: var(--pen);
+  stroke-width: 3;
+}
+
+.board-cell.board-uf-node[data-path] {
+  border-width: 3px;
+  border-color: var(--pen);
+}
+
+.board-uf-row {
+  position: absolute;
+  left: 0;
+  display: flex;
+  align-items: center;
+}
+
+.board-uf-row-head {
+  flex: none;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.board-uf-row .board-cell[data-path] {
+  box-shadow: inset 0 0 0 2px var(--pen);
+}
+
+.board-uf-indices {
+  position: absolute;
+}
+
+/* ---------- 字典樹 ---------- */
+.board-trie-result {
+  position: absolute;
+  top: 22px;
+  left: 0;
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.board-trie-result[data-result='word'] {
+  color: var(--good);
+}
+
+.board-trie-result[data-result='none'] {
+  color: var(--danger);
+}
+
+.board-cell.board-trie-node {
+  font-size: 14px;
+}
+
+.board-cell.board-trie-node[data-root] {
+  border-color: var(--ink-3);
+  background: var(--sheet-2);
+}
+
+/* 字的結尾：外面再一圈綠色 */
+.board-cell.board-trie-node[data-end] {
+  border-color: var(--good);
+  outline: 2px solid var(--good);
+  outline-offset: 2px;
+}
+
+/* 正在找的字走得到的路 */
+.board-cell.board-trie-node[data-path]:not([data-picked]) {
+  background: var(--cell-yellow);
+}
+
+.board-tree-edges .board-trie-path-edge {
+  stroke: var(--pen);
+  stroke-width: 3;
+}

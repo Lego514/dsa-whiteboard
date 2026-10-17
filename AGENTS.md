@@ -39,9 +39,10 @@ npm run worker:dev   # 共用伺服器 http://localhost:8787，不用 Cloudflare
 ```
 src/
   lib/          不含 React 的純邏輯：model.ts（白板資料和所有編輯操作、復原紀錄）、版面、
-                「從文字建立」的解析、模板、Python 上色、SVG 匯出。大部分單元測試在這
+                「從文字建立」的解析、模板、Python 上色、SVG 匯出。大部分單元測試在這。
+                後來加的元件各自一個檔：bits.ts、unionFind.ts、trie.ts（共用 forest.ts 的多叉樹排版）
   components/   Whiteboard.tsx（編輯器本體）、BoardElements.tsx（各種元件）、BoardSteps.tsx（步驟播放）、
-                ShareControls.tsx（共用的按鈕和房間選單）
+                ShareControls.tsx（共用的按鈕和房間選單）、StructureActions.tsx（位元、並查集、字典樹的選取列）
   collab/       一起編輯：ops.ts（修改的格式、套用、復原紀錄重算）、client.ts（WebSocket 連線、批次送出、
                 重新連線）、useCollab.ts、context.ts、messages.ts（前後端的訊息型別）
   schema.ts     zod 定義的白板格式（dsa-whiteboard/schema）
@@ -58,6 +59,7 @@ e2e/            Playwright；collab.spec.ts 用兩個瀏覽器測一起編輯
 - **套件的元件本體不能帶進 zod**：`src/index.ts` 只匯出型別和 `constants.ts`，zod 的 schema 放在 `dsa-whiteboard/schema`。之前在入口匯出 schema，讓刷題教練的 bundle 多了 37KB。
 - **介面文字只放在 `src/i18n/`**，兩個語言的 key 要一樣（有測試檢查）。
 - **純邏輯放 `src/lib/`、寫成純函式並寫單元測試**；元件只負責畫面和事件。
+- **`model.ts` 和 `bits.ts`、`unionFind.ts`、`trie.ts` 互相引用**：這些檔案的頂層（常數、`const x = ...`）不能用到 model 的值，只能在函式裡用，不然看誰先載入，會讀到還沒初始化的值。
 - **一起編輯的同步規則**：每個元件為單位，伺服器收到的順序決定誰贏（last-write-wins）；自己還沒被確認的修改，不套用別人對同一個元件的修改；復原只退回自己的動作（別人的修改會套進復原紀錄的每個版本）。改這部分要跑 `src/collab/client.test.ts`（模擬網路的收斂測試）。
 - **共用伺服器只接受 `wrangler.jsonc` 裡 `ALLOWED_ORIGINS` 列的網址**；新的網站要用共用，就加在這裡。
 - 新增的套件釘版本；Playwright 固定在 1.63.0（要跟裝好的瀏覽器版本一樣）。
@@ -94,6 +96,6 @@ e2e/            Playwright；collab.spec.ts 用兩個瀏覽器測一起編輯
 
 ## 待辦（使用者提過、還沒做的）
 
-- 先暫緩（使用者說「先不要」）：N 元樹和 Trie（當成遞迴樹的變化）、元件庫重新分組（現在每組 5/5/5/4 個，一排 4 個會多一行）。
+- 先暫緩（使用者說「先不要」）：N 元樹（當成遞迴樹的變化）、元件庫重新分組。現在每組 6/7/5/4 個，一排 4 個；新元件放進還沒滿兩排的組不會多一排，筆記那組（4 個）再加就會多一排。
 - 發佈到 npm（需要使用者的 npm 帳號）。
 - 共用房間沒有密碼：拿到連結的人都能編輯。

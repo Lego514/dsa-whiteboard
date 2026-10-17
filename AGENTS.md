@@ -80,7 +80,7 @@ e2e/            Playwright；collab.spec.ts 用兩個瀏覽器測一起編輯
   1. 在這個 repo 開 PR：功能，加上 `package.json`（和 `package-lock.json`）的版本號、README 安裝指令裡的 tag。
   2. CI 通過、使用者說合併後：`git tag -a vX.Y.Z -m vX.Y.Z`、`git push origin vX.Y.Z`、`gh release create vX.Y.Z`（寫這版的改變）。
   3. 到刷題教練開 PR，把依賴改成新的 tag：`npm install "dsa-whiteboard@github:Lego514/dsa-whiteboard#vX.Y.Z"`。套件安裝時會跑 `prepare` 建出 `dist/`。
-- 目前最新版：v0.1.5（桌機上選取列不再蓋住逐步播放）。v0.1.4 加了一起編輯、ShareControls。還沒發佈到 npm：要等使用者建 npm 帳號並在 repo 加 `NPM_TOKEN`。
+- 目前最新版：v0.1.6（並查集、字典樹、位元列）。v0.1.5 修了桌機上選取列蓋住逐步播放，v0.1.4 加了一起編輯、ShareControls。還沒發佈到 npm：要等使用者建 npm 帳號並在 repo 加 `NPM_TOKEN`。
 
 ## 這台電腦的坑（Windows）
 

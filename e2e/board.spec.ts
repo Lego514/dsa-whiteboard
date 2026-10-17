@@ -733,3 +733,25 @@ test('after adding a node and typing its value, clicking another node selects it
   await root.click();
   await expect(root).toBeFocused();
 });
+
+test('keeps the selection toolbar off the steps buttons on a narrow desktop', async ({ page, isMobile }) => {
+  // 手機上選取列在下面，本來就不會碰到
+  test.skip(isMobile, 'desktop layout only');
+  const apart = async () => {
+    const steps = (await page.getByRole('group', { name: 'Steps' }).boundingBox())!;
+    const bar = (await page.getByRole('toolbar', { name: 'Selected element' }).boundingBox())!;
+    expect(bar.x >= steps.x + steps.width || bar.y >= steps.y + steps.height).toBe(true);
+    // 被蓋住的話這一下會點到選取列
+    await page.getByRole('button', { name: /^Save the current board/ }).click({ trial: true });
+  };
+  await page.setViewportSize({ width: 1024, height: 800 });
+  await page.goto('./');
+  await page.getByRole('button', { name: /^Tree DFS/ }).click();
+  await page.keyboard.press('Escape');
+  // 選一個樹節點：選取列很寬，以前置中時會蓋住左上角的「記一步」
+  await page.locator('.board-tree-node').first().click();
+  await apart();
+  // 再窄一點，選取列換行，還是在右邊
+  await page.setViewportSize({ width: 860, height: 800 });
+  await apart();
+});

@@ -15,7 +15,7 @@
 ## 跟使用者合作的方式
 
 - **用繁體中文回覆**；程式碼註解也是繁中，說明「為什麼」。
-- **流程**：開分支做 → 自己驗證（測試、改到畫面就截圖）→ 用繁中報告 → **等使用者說「commit 並開 PR」才 commit、push、開 PR**。「合併」＝CI 通過後合併那個 PR，再更新本機 main。不要直接 push 到 main，不要自己合併。
+- **流程**：開分支做 → 自己驗證（測試、改到畫面就截圖）→ 用繁中報告 → **等使用者說「commit 並開 PR」才 commit、push、開 PR**。開了 PR 之後（2026-10-18 起使用者同意）：CI 失敗自己修到綠燈，CI 通過就自己合併（Claude Code 用自動修正和 auto-merge），再更新本機 main、刪掉分支。不要直接 push 到 main。
 - **commit 訊息**：英文，第一行寫使用者看得到的改變，內文寫為什麼。PR 描述分「What changes」和「Tests」。
 - 不要 commit 或貼出秘密；不要代使用者註冊或登入任何服務；改 repo 設定（secrets、variables、Pages）之前先問。
 
@@ -80,7 +80,7 @@ e2e/            Playwright；collab.spec.ts 用兩個瀏覽器測一起編輯
   1. 在這個 repo 開 PR：功能，加上 `package.json`（和 `package-lock.json`）的版本號、README 安裝指令裡的 tag。
   2. CI 通過、使用者說合併後：`git tag -a vX.Y.Z -m vX.Y.Z`、`git push origin vX.Y.Z`、`gh release create vX.Y.Z`（寫這版的改變）。
   3. 到刷題教練開 PR，把依賴改成新的 tag：`npm install "dsa-whiteboard@github:Lego514/dsa-whiteboard#vX.Y.Z"`。套件安裝時會跑 `prepare` 建出 `dist/`。
-- 目前最新版：v0.1.5（桌機上選取列不再蓋住逐步播放）。v0.1.4 加了一起編輯、ShareControls。還沒發佈到 npm：要等使用者建 npm 帳號並在 repo 加 `NPM_TOKEN`。
+- 目前最新版：v0.1.6（並查集、字典樹、位元列）。v0.1.5 修了桌機上選取列蓋住逐步播放，v0.1.4 加了一起編輯、ShareControls。還沒發佈到 npm：要等使用者建 npm 帳號並在 repo 加 `NPM_TOKEN`。
 
 ## 這台電腦的坑（Windows）
 

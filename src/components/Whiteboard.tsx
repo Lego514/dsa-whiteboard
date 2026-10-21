@@ -16,6 +16,7 @@ import { useCollab, type CollabOptions } from '../collab/useCollab';
 import { BOARD_COLORS, BOARD_MAX_BYTES, CELL_COLORS, type BoardColor, type CellColor } from '../constants';
 import type { BoardDoc } from '../schema';
 import { I18nProvider, MESSAGES, useI18n, type Locale } from '../i18n';
+import { insertExample } from '../lib/example';
 import { boardToSvg, estimateWidth, type Measure } from '../lib/exportSvg';
 import { flipBit, isBits } from '../lib/bits';
 import * as m from '../lib/model';
@@ -26,6 +27,7 @@ import { ElementView } from './BoardElements';
 import { PlaybackBar, StepsWidget } from './BoardSteps';
 import { Dialog } from './Dialog';
 import { NoticeProvider, useNotice } from './Notice';
+import { PasteExampleDialog } from './PasteExample';
 import { BitsActions, TrieActions, TrieNodeActions, UnionFindActions, UnionFindNodeActions } from './StructureActions';
 
 // 自己寫的數位白板：左邊拖元件、中間是可以平移縮放的畫布、下面是工具列。
@@ -174,6 +176,7 @@ function Editor<R>({
   const [ghost, setGhost] = useState<{ kind: m.PaletteKind; x: number; y: number } | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [pasting, setPasting] = useState(false);
   /** 手機上顏色收成一顆，點了才展開 */
   const [colorsOpen, setColorsOpen] = useState(false);
   /** 正在播放第幾步；null 是一般編輯 */
@@ -449,6 +452,19 @@ function Editor<R>({
     apply(next);
     setSelection(new Set(ids));
     setTool('select');
+  };
+
+  /** 貼上整段範例：畫成一組元件放在畫面中間附近，全部選取；看不懂時回傳原因 */
+  const drawExample = (text: string): string | null => {
+    const result = insertExample(doc, text, centerWorld(), sizes);
+    if ('error' in result) return t.board.structureText.errors[result.error];
+    stopEditing();
+    setCellSel(null);
+    apply(result.doc);
+    setSelection(new Set(result.ids));
+    setTool('select');
+    setPasting(false);
+    return null;
   };
 
   // ---------- 陣列的單一格 ----------
@@ -1328,6 +1344,16 @@ function Editor<R>({
       <div className="board-body">
         <aside className="board-palette" aria-label={t.board.palette}>
           <p className="board-palette-hint">{t.board.paletteHint}</p>
+          {/* 最常用的起點：直接貼題目的範例 */}
+          <button type="button" className="board-template board-paste" title={t.board.pasteExample.hint} onClick={() => setPasting(true)}>
+            <span className="board-palette-icon" aria-hidden>
+              <Icon>{ICON_PASTE}</Icon>
+            </span>
+            <span className="board-template-text">
+              <span className="board-template-name">{t.board.pasteExample.button}</span>
+              <span className="board-template-hint">{t.board.pasteExample.short}</span>
+            </span>
+          </button>
           <section className="board-palette-group board-templates" aria-label={t.board.groups.templates}>
             <h2>{t.board.groups.templates}</h2>
             <div className="board-template-items">
@@ -1744,6 +1770,8 @@ function Editor<R>({
           )}
         </div>
       </div>
+
+      <PasteExampleDialog open={pasting} onClose={() => setPasting(false)} onDraw={drawExample} />
 
       <Dialog
         open={confirmClear}
@@ -2606,6 +2634,9 @@ const ICON_EXPORT = (
     <path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14" />
   </Icon>
 );
+
+// 剪貼簿：貼上範例
+const ICON_PASTE = <path d="M9 4h6v3H9zM9 5.5H6.5A1.5 1.5 0 0 0 5 7v12.5A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V7a1.5 1.5 0 0 0-1.5-1.5H15M8.5 12h7M8.5 16h5" />;
 
 const ICON_CLEAR = (
   <Icon>

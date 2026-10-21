@@ -38,6 +38,15 @@ export const en: Messages = {
       gridBfs: { name: 'Grid BFS', hint: '2D array, queue, visited set' },
       backtracking: { name: 'Backtracking', hint: 'Subsets as a recursion tree, with path and cur' },
     },
+    pasteExample: {
+      button: 'Paste example',
+      short: 'Draw a problem’s Input in one go',
+      title: 'Paste a problem’s example',
+      hint: 'Paste the whole Input from a LeetCode example. Each argument becomes the matching element: arrays, strings (split into characters), trees, linked lists, graphs, intervals, 2D arrays, and dicts; numbers become variables.',
+      label: 'Problem example',
+      placeholder: 'nums = [2,7,11,15], target = 9',
+      draw: 'Draw it',
+    },
     kinds: {
       heading: 'Heading',
       text: 'Text',
@@ -115,6 +124,7 @@ export const en: Messages = {
       'DP table: choose what each cell depends on, and the cell being filled shows arrows from those cells. Type its value in the selection bar and press Enter to move to the next empty cell; turn on “Record each filled cell” to replay how the table fills up. Arrow keys move the cell being filled, and “Build from text” reads the problem’s input, like text1 = "abcde", text2 = "ace" or coins = [1,2,5], amount = 11.',
       'Range frame: select two pointers on the same array (Shift-click or box select) and choose “Frame between pointers”. The frame follows the pointers as they move, which suits sliding windows.',
       'The templates at the top of the palette set up a common scene in one click (two pointers, sliding window, reversing a list, tree DFS, grid BFS, backtracking). The whole group is selected, so you can drag it where you want.',
+      'Paste example (top of the palette): paste a problem’s whole Input, like nums = [2,7,11,15], target = 9, and every argument is drawn at once, selected together so you can drag it into place. Names decide the shape: root is a tree, head a linked list, edges with n a graph, intervals a number line, strings are split into characters, and numbers become variables.',
       'Select an array, stack, queue, set, dict, 2D array, linked list, binary tree, graph, recursion tree (one call per line, indented under its caller), DP table, or intervals and choose “Build from text” to paste the problem’s example, like nums = [2,7,11,15] (the name becomes nums too), "abcabcbb" (split into characters), 1->2->3, or [3,9,20,null,null,15,7].',
       'Click one cell of an array to select just that cell: highlight it, put a pointer on it, insert or delete cells, and move between cells with the arrow keys. With an array selected, the + at the end adds a cell.',
       'Drag across empty space to select everything inside the box, then move, duplicate (Ctrl+D), delete, or recolor it together. Shift adds to the selection; Ctrl+A selects everything.',

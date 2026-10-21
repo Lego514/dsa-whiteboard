@@ -2505,3 +2505,31 @@ input.board-dp-head-input {
   stroke: var(--pen);
   stroke-width: 3;
 }
+
+/* ---------- 貼上範例 ---------- */
+/* 元件庫最上面，比模板顯眼一點 */
+.board-template.board-paste {
+  margin-bottom: 14px;
+  border: 1px solid var(--pen);
+  background: var(--pen-soft);
+}
+
+.board-paste-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.board-paste-hint {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.board-paste-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-mono);
+  font-size: 14px;
+}

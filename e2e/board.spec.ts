@@ -855,3 +855,30 @@ test('inserts and searches words in a trie, step by step', async ({ page }) => {
   await selbar.getByRole('button', { name: 'Remove "apt"' }).click();
   await expect(trie).toHaveAccessibleName(/: app, apple, bat, bad$/);
 });
+
+test('pastes a whole example and draws every argument at once', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: /^Paste example/ }).click();
+  const dialog = page.getByRole('dialog', { name: 'Paste a problem’s example' });
+  const box = dialog.getByRole('textbox', { name: 'Problem example' });
+
+  // 看不懂的留在對話框裡說明原因
+  await box.fill('nums = [1, 2');
+  await dialog.getByRole('button', { name: 'Draw it' }).click();
+  await expect(dialog.getByRole('alert')).toHaveText('Couldn’t read that. See the example in the box.');
+
+  // 從題目整段複製：Input 和 Output 都在
+  await box.fill('Input: nums = [2,7,11,15], target = 9\nOutput: [0,1]');
+  await dialog.getByRole('button', { name: 'Draw it' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole('group', { name: 'Array nums: 2, 7, 11, 15' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Variable target = 9' })).toBeVisible();
+  // 整組選取，可以直接拖走
+  await expect(page.getByRole('toolbar', { name: 'Selected element' })).toContainText('2 selected');
+
+  // 圖：n 併進圖裡
+  await page.getByRole('button', { name: /^Paste example/ }).click();
+  await box.fill('n = 4, edges = [[0,1],[1,2],[2,3]]');
+  await box.press('Control+Enter');
+  await expect(page.getByRole('group', { name: /^Graph edges: n = 4, edges = \[\[0,1\],\[1,2\],\[2,3\]\]/ })).toBeVisible();
+});

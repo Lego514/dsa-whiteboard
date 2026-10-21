@@ -61,6 +61,10 @@ Built for working through LeetCode-style problems by hand: sliding windows, link
 - **Code tracing** turns a code box into a dry run, the Test step of an interview.
   - "Trace line by line" highlights the line running. Move with ↑ ↓ or by clicking a line; blank lines are skipped.
   - With "Record each line" on, every move first saves the board as a step with the line that just ran highlighted. Update the variables and arrays beside it as you go, and playback replays the whole run, with room for a one-line note per step.
+- **Paste example** (top of the palette) draws a problem's whole Input at once: `nums = [2,7,11,15], target = 9` becomes an array and a variable, selected together so the group can be dragged into place.
+  - Copying the example straight from LeetCode works, `Input:` and `Output:` included.
+  - Names decide the shape: `root` is a tree, `head` or `l1` a linked list, `edges` or `prerequisites` with `n` or `numCourses` a graph (directed for prerequisites), `intervals` with an optional `newInterval` a number line, other 2D arrays a grid, and objects a dict.
+  - Strings are split into characters, and numbers and booleans become variables.
 - **Build from text**: arrays, stacks, queues, heaps, sets, dicts, 2D arrays, linked lists, trees, graphs, recursion trees, Union-Find, tries, bits, DP tables, and intervals can all be filled by pasting a problem's example instead of typing cell by cell:
   - `nums = [2,7,11,15], target = 9` takes the first value and renames the element `nums`
   - `"abcabcbb"` splits into characters

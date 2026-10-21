@@ -130,7 +130,7 @@ export function templateElements(kind: TemplateKind, nextId: () => string): Boar
   }
 }
 
-function idMaker(doc: BoardDoc): () => string {
+export function idMaker(doc: BoardDoc): () => string {
   const taken = new Set(doc.elements.map((el) => el.id));
   return () => {
     for (;;) {
@@ -154,7 +154,11 @@ function groupBounds(els: BoardElement[]): Rect {
 
 /** 把模板整組放在 center 附近的空位，回傳新文件和新元件的 id（方便整組選取） */
 export function insertTemplate(doc: BoardDoc, kind: TemplateKind, center: Point, sizes?: Sizes): { doc: BoardDoc; ids: string[] } {
-  const els = templateElements(kind, idMaker(doc));
+  return placeGroup(doc, templateElements(kind, idMaker(doc)), center, sizes);
+}
+
+/** 一組元件（位置相對於彼此）整組搬到 center 附近的空位，加進白板 */
+export function placeGroup(doc: BoardDoc, els: BoardElement[], center: Point, sizes?: Sizes): { doc: BoardDoc; ids: string[] } {
   const bounds = groupBounds(els);
   const spot = freeSpot(doc, bounds.w, bounds.h, center, sizes);
   const dx = spot.x - bounds.x;

@@ -57,7 +57,7 @@ export function splitName(text: string): { name?: string; body: string } {
 }
 
 /** JSON 或 Python 的寫法（單引號、None、True）都讀；讀不出來是 undefined */
-function readValue(text: string): unknown {
+export function readValue(text: string): unknown {
   const json = text
     .replace(/'/g, '"')
     .replace(/\bNone\b/g, 'null')

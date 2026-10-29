@@ -89,7 +89,7 @@ Built for working through LeetCode-style problems by hand: sliding windows, link
 
   *Left: Alice. Right: Bob, who opened Alice's link.*
 
-The interface is in English and Traditional Chinese.
+The interface is in English and Traditional Chinese. Light and dark follow your system; on the site, the button at the top right switches them and remembers your choice.
 
 ## Use it in a React app
 

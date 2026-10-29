@@ -1,4 +1,9 @@
-/* 獨立網站標題列上的按鈕：共用、語言切換和 GitHub 連結 */
+/* 網站的標題很短，只放「DSA Whiteboard」：不撐開，空間先讓給存檔狀態縮成省略號 */
+.board-heading {
+  flex: 0 1 auto;
+}
+
+/* 獨立網站標題列上的按鈕：共用、語言切換、深淺色和 GitHub 連結 */
 .app-actions {
   display: flex;
   flex: none;
@@ -17,9 +22,24 @@
   height: 18px;
 }
 
-/* 手機上共用時多了頭像和複製連結，GitHub 連結先收起來 */
+/*
+ * 手機上標題列放不下，標題要完整顯示：GitHub 連結先收起來；
+ * 存檔狀態不占位置（網站會自動存），但留給螢幕閱讀器念（它是 aria-live）
+ */
 @media (max-width: 480px) {
-  .board-head:has(.board-peers) .app-github {
+  .app-github {
     display: none;
+  }
+
+  .board-head:not(:has(.board-peers)) .board-save {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .board-head > .app-actions {
+    margin-left: auto;
   }
 }

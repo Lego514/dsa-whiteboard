@@ -882,3 +882,25 @@ test('pastes a whole example and draws every argument at once', async ({ page })
   await box.press('Control+Enter');
   await expect(page.getByRole('group', { name: /^Graph edges: n = 4, edges = \[\[0,1\],\[1,2\],\[2,3\]\]/ })).toBeVisible();
 });
+
+test('switches between light and dark from the top right, and remembers the choice', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.goto('./');
+  // 網站的標題列只放「DSA Whiteboard」，沒有上面那行小字
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('DSA Whiteboard');
+  await expect(page.locator('.board-caption')).toHaveCount(0);
+  const html = page.locator('html');
+  const paper = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  const light = await paper();
+  await page.getByRole('button', { name: 'Switch to dark mode' }).click();
+  await expect(html).toHaveAttribute('data-theme', 'dark');
+  await expect.poll(paper).not.toBe(light);
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#0e1829');
+
+  // 重新整理還是深色：在畫面出來前就套上，不會先閃一下淺色
+  await page.reload();
+  await expect(html).toHaveAttribute('data-theme', 'dark');
+  await page.getByRole('button', { name: 'Switch to light mode' }).click();
+  await expect(html).toHaveAttribute('data-theme', 'light');
+  await expect.poll(paper).toBe(light);
+});

@@ -8,32 +8,35 @@ import { boardDocSchema } from '../src/schema';
 const DOC_KEY = 'dsa-whiteboard:doc';
 const LOCALE_KEY = 'dsa-whiteboard:locale';
 const NAME_KEY = 'dsa-whiteboard:name';
+/** 自己選的深色或淺色；沒選過就跟著系統（index.html 在畫面出來前先套上） */
+const THEME_KEY = 'dsa-whiteboard:theme';
+const PAPER = { light: '#f3f5f8', dark: '#0e1829' };
 const REPO_URL = 'https://github.com/Lego514/dsa-whiteboard';
 /** 共用房間的伺服器；建置時沒設定就不顯示「共用」 */
 const COLLAB_URL = import.meta.env.VITE_COLLAB_URL;
 
 const TEXT = {
   'zh-TW': {
-    caption: '資料結構與演算法白板',
     switchTo: 'EN',
     switchLabel: 'Switch to English',
+    toDark: '切換成深色',
+    toLight: '切換成淺色',
     source: 'GitHub 上的原始碼',
     storageFull: '瀏覽器的儲存空間滿了，這次的修改沒有存起來。',
     saveCopyConfirm: '要用這張共用白板取代你自己的白板嗎？你原本的白板會被蓋掉。',
     savedCopy: '已存到你的白板',
     guest: '訪客',
-    roomCaption: '共用白板',
   },
   en: {
-    caption: 'Data structures & algorithms',
     switchTo: '中',
     switchLabel: '切換成中文',
+    toDark: 'Switch to dark mode',
+    toLight: 'Switch to light mode',
     source: 'Source code on GitHub',
     storageFull: 'Browser storage is full, so the latest change wasn’t saved.',
     saveCopyConfirm: 'Replace your own board with this shared one? Your current board will be overwritten.',
     savedCopy: 'Saved to your board',
     guest: 'Guest',
-    roomCaption: 'Shared whiteboard',
   },
 } satisfies Record<Locale, unknown>;
 
@@ -62,6 +65,42 @@ function initialLocale(): Locale {
   return navigator.language.toLowerCase().startsWith('zh') ? 'zh-TW' : 'en';
 }
 
+type Theme = 'light' | 'dark';
+
+function savedTheme(): Theme | null {
+  const saved = storage()?.getItem(THEME_KEY);
+  return saved === 'dark' || saved === 'light' ? saved : null;
+}
+
+const darkQuery = () => window.matchMedia('(prefers-color-scheme: dark)');
+
+/**
+ * 深色或淺色：選過就用選的，沒選過跟著系統（系統換了也跟著換）。
+ * 白板的樣式看 <html data-theme>，所以只要改這個屬性
+ */
+function useTheme(): { dark: boolean; toggle: () => void } {
+  const [chosen, setChosen] = useState(savedTheme);
+  const [systemDark, setSystemDark] = useState(() => darkQuery().matches);
+  useEffect(() => {
+    const query = darkQuery();
+    const onChange = () => setSystemDark(query.matches);
+    query.addEventListener('change', onChange);
+    return () => query.removeEventListener('change', onChange);
+  }, []);
+  const dark = chosen ? chosen === 'dark' : systemDark;
+  // 手機瀏覽器的網址列顏色跟著換
+  useEffect(() => {
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? PAPER.dark : PAPER.light);
+  }, [dark]);
+  const toggle = () => {
+    const next: Theme = dark ? 'light' : 'dark';
+    setChosen(next);
+    document.documentElement.dataset.theme = next;
+    storage()?.setItem(THEME_KEY, next);
+  };
+  return { dark, toggle };
+}
+
 /** 網址裡的房間代碼：#room=…（網站沒設定共用伺服器時當作沒有） */
 function roomFromHash(): string | null {
   if (!COLLAB_URL) return null;
@@ -76,6 +115,19 @@ function initialName(locale: Locale): string {
   storage()?.setItem(NAME_KEY, name);
   return name;
 }
+
+/** 深色時顯示太陽（按了換成淺色），淺色時顯示月亮 */
+const SUN_ICON = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+    <path d="M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4" />
+  </svg>
+);
+
+const MOON_ICON = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden>
+    <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" />
+  </svg>
+);
 
 const GITHUB_ICON = (
   <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -97,6 +149,7 @@ export function App() {
   /** 白板現在的內容（共用時是房間的內容）：共用時放進房間、「存一份」時用 */
   const current = useRef<BoardDoc>(localDoc);
   const text = TEXT[locale];
+  const theme = useTheme();
 
   // 上一頁、下一頁或手動改網址時，跟著換房間
   const onHashChange = useEffectEvent(() => {
@@ -179,6 +232,15 @@ export function App() {
       <button type="button" className="btn btn-quiet btn-small" aria-label={text.switchLabel} title={text.switchLabel} onClick={switchLocale}>
         {text.switchTo}
       </button>
+      <button
+        type="button"
+        className="btn btn-quiet btn-small app-icon-link"
+        aria-label={theme.dark ? text.toLight : text.toDark}
+        title={theme.dark ? text.toLight : text.toDark}
+        onClick={theme.toggle}
+      >
+        {theme.dark ? SUN_ICON : MOON_ICON}
+      </button>
       <a className="btn btn-quiet btn-small app-icon-link app-github" href={REPO_URL} target="_blank" rel="noopener noreferrer" aria-label={text.source} title={text.source}>
         {GITHUB_ICON}
       </a>
@@ -198,7 +260,6 @@ export function App() {
       onSave={save}
       onChange={(doc) => (current.current = doc)}
       title="DSA Whiteboard"
-      caption={room ? text.roomCaption : text.caption}
       exportName="dsa-whiteboard"
       actions={actions}
       collab={collab}

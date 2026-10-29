@@ -7,6 +7,13 @@
     <meta name="theme-color" content="#f3f5f8" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <title>DSA Whiteboard</title>
+    <script>
+      // 自己選過深色或淺色就在畫面出來前套上，不會先閃一下系統的顏色
+      try {
+        var theme = localStorage.getItem('dsa-whiteboard:theme');
+        if (theme === 'dark' || theme === 'light') document.documentElement.dataset.theme = theme;
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

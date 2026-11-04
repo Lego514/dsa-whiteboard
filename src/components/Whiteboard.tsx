@@ -884,9 +884,11 @@ function Editor<R>({
         if (tap?.id === elId && tap.cell === cell && now - tap.time < 350) {
           lastTap.current = null;
           const tapped = m.findElement(doc, elId);
-          // 樹、圖、遞迴樹的節點：不讓瀏覽器把焦點移到剛被換掉的節點上，輸入框才拿得到游標
-          if (cell !== undefined && (tapped?.type === 'tree' || tapped?.type === 'graph' || tapped?.type === 'recursion')) e.preventDefault();
-          if (tapped?.type !== 'shape') startEditing(elId, cell);
+          if (tapped?.type !== 'shape') {
+            // 不讓瀏覽器把焦點移到剛被換成輸入框的地方（變數、樹的節點…），輸入框自己拿游標，雙擊完就能打字
+            e.preventDefault();
+            startEditing(elId, cell);
+          }
           return;
         }
         if (e.shiftKey) {

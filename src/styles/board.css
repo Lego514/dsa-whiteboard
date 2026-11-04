@@ -368,7 +368,9 @@
   border-radius: 2px;
 }
 
+/* 編輯中的元件排在最上層：輸入框展開時不會被後加的元件、框框、箭頭或樹的節點（自己有 z-index）蓋住 */
 .board-el[data-editing] {
+  z-index: 10;
   cursor: auto;
 }
 

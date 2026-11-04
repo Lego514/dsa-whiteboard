@@ -76,7 +76,7 @@ Built for working through LeetCode-style problems by hand: sliding windows, link
   - `n = 5, edges = [[0,1],[1,2]]` (merged in order) or `parent = [0,0,1]` for Union-Find, `["apple","app"]` for tries, and `n = 11`, `0b1011`, or LeetCode's 32-character bit strings for bits
   - `intervals = [[1,3],[2,6]]` for intervals; a `newInterval = [4,8]` is added in yellow, and an employee `schedule` gets one color per person
 - **Other tools**:
-  - rectangle and ellipse frames, which draw on top but stay click-through except their outline
+  - rectangle and ellipse frames, which draw on top but stay click-through except their outline; hold Shift or Ctrl for a square or circle, and again while dragging the corner to resize without changing the shape
   - arrows and plain lines (for undirected edges) that follow the elements they connect
   - a pen, an eraser, and five colors
   - undo/redo and clear canvas
@@ -96,7 +96,7 @@ The interface is in English and Traditional Chinese. Light and dark follow your 
 The package isn't on npm yet. Install it from GitHub at a release tag:
 
 ```bash
-npm install github:Lego514/dsa-whiteboard#v0.1.7
+npm install github:Lego514/dsa-whiteboard#v0.1.8
 ```
 
 React 19.2 or later is a peer dependency. zod 4 is needed only if you import `dsa-whiteboard/schema`.

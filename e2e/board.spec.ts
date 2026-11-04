@@ -145,6 +145,49 @@ test('frames part of an array with a rectangle without blocking it', async ({ pa
   await expect(array).toBeVisible();
 });
 
+test('draws a circle with Ctrl and keeps it round while resizing', async ({ page }) => {
+  await page.goto('./');
+  const canvas = (await page.getByRole('dialog', { name: 'DSA Whiteboard' }).boundingBox())!;
+  const x = canvas.x + canvas.width / 2 - 100;
+  const y = canvas.y + canvas.height / 2 - 60;
+
+  // O 畫圓形框：拖成扁的，拖到一半按住 Ctrl 就馬上變成正圓（不用再動滑鼠）
+  await page.keyboard.press('o');
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 120, y + 60, { steps: 4 });
+  const draft = page.locator('ellipse.board-shape-draft');
+  await expect(draft).toHaveAttribute('ry', '30');
+  await page.keyboard.down('Control');
+  await expect(draft).toHaveAttribute('ry', '60');
+  await expect(draft).toHaveAttribute('rx', '60');
+  await page.mouse.up();
+  await page.keyboard.up('Control');
+  const frame = page.getByRole('group', { name: 'Ellipse' });
+  let box = (await frame.boundingBox())!;
+  expect(Math.round(box.width)).toBe(Math.round(box.height));
+  expect(Math.round(box.width)).toBe(120);
+
+  // 按住 Ctrl 拖右下角：只往右拖也一起放大，還是正圓
+  await page.mouse.move(box.x + box.width + 2, box.y + box.height + 2);
+  await page.keyboard.down('Control');
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width + 62, box.y + box.height + 2, { steps: 4 });
+  await page.mouse.up();
+  await page.keyboard.up('Control');
+  box = (await frame.boundingBox())!;
+  expect(Math.round(box.width)).toBe(Math.round(box.height));
+  expect(box.width).toBeGreaterThan(140);
+
+  // 不按就照拖的大小變成橢圓
+  await page.mouse.move(box.x + box.width + 2, box.y + box.height + 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width + 42, box.y + box.height + 2, { steps: 4 });
+  await page.mouse.up();
+  const oval = (await frame.boundingBox())!;
+  expect(oval.width - oval.height).toBeGreaterThan(30);
+});
+
 test('connects elements with a plain line, then selects, duplicates, and deletes a group with a box', async ({ page }) => {
   await page.goto('./');
   // 元件庫已經沒有單一的圖節點，用兩個變數來連

@@ -111,28 +111,6 @@ test('clears the canvas after confirming, and undo brings it back', async ({ pag
   await expect(page.getByRole('group', { name: /^Sticky note/ })).toBeVisible();
 });
 
-// 選取以外的工具：滑過元件也是工具的游標，不會出現拖動的游標
-test('shows the tool’s cursor over elements, not the move cursor', async ({ page }) => {
-  await page.goto('./');
-  await page.getByRole('button', { name: 'Array', exact: true }).click();
-  const array = page.getByRole('group', { name: /^Array nums/ });
-  const cell = array.getByTitle('2', { exact: true });
-  const cursors = async () => [await array.evaluate((el) => getComputedStyle(el).cursor), await cell.evaluate((el) => getComputedStyle(el).cursor)];
-  expect((await cursors())[0]).toBe('move');
-  for (const [key, cursor] of [
-    ['p', 'crosshair'],
-    ['e', 'cell'],
-    ['h', 'grab'],
-    ['o', 'crosshair'],
-    ['a', 'crosshair'],
-  ] as const) {
-    await page.keyboard.press(key);
-    expect(await cursors()).toEqual([cursor, cursor]);
-  }
-  await page.keyboard.press('v');
-  expect((await cursors())[0]).toBe('move');
-});
-
 test('frames part of an array with a rectangle without blocking it', async ({ page }) => {
   await page.goto('./');
   await page.getByRole('button', { name: 'Array', exact: true }).click();
@@ -968,4 +946,26 @@ test('switches between light and dark from the top right, and remembers the choi
   await page.getByRole('button', { name: 'Switch to light mode' }).click();
   await expect(html).toHaveAttribute('data-theme', 'light');
   await expect.poll(paper).toBe(light);
+});
+
+// 選取以外的工具：滑過元件也是工具的游標，不會出現拖動的游標
+test('shows the tool’s cursor over elements, not the move cursor', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Array', exact: true }).click();
+  const array = page.getByRole('group', { name: /^Array nums/ });
+  const cell = array.getByTitle('2', { exact: true });
+  const cursors = async () => [await array.evaluate((el) => getComputedStyle(el).cursor), await cell.evaluate((el) => getComputedStyle(el).cursor)];
+  expect((await cursors())[0]).toBe('move');
+  for (const [key, cursor] of [
+    ['p', 'crosshair'],
+    ['e', 'cell'],
+    ['h', 'grab'],
+    ['o', 'crosshair'],
+    ['a', 'crosshair'],
+  ] as const) {
+    await page.keyboard.press(key);
+    expect(await cursors()).toEqual([cursor, cursor]);
+  }
+  await page.keyboard.press('v');
+  expect((await cursors())[0]).toBe('move');
 });

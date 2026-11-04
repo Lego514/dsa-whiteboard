@@ -265,12 +265,23 @@
 }
 
 .board-viewport[data-tool='pen'],
-.board-viewport[data-tool='arrow'] {
+.board-viewport[data-tool='arrow'],
+.board-viewport[data-tool='line'],
+.board-viewport[data-tool='rect'],
+.board-viewport[data-tool='ellipse'] {
   cursor: crosshair;
 }
 
 .board-viewport[data-tool='eraser'] {
   cursor: cell;
+}
+
+/*
+ * 選取以外的工具：滑過元件也是工具的游標（畫筆、橡皮擦、平移…），不是拖動的游標。
+ * 這時點元件不會拖動它；元件裡各處都有自己的游標（拖動、手指、調整大小），只能用 !important 一次蓋過
+ */
+.board-viewport:not([data-tool='select']) .board-world * {
+  cursor: inherit !important;
 }
 
 .board-world {

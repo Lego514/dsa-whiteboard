@@ -1,0 +1,37 @@
+name: Publish to npm
+
+# 在 GitHub 發一個 release（例如 v0.1.10）就把那一版發佈到 npm。
+# 用 npm 的信任發佈（trusted publishing）：npm 那邊設定了只認這個 repo 的這個 workflow，
+# GitHub 用短效的 OIDC 憑證證明身分，所以不用在 secrets 存 npm token；
+# 每一版也會附上來源證明（provenance），npm 上看得到是從哪個 commit、哪次執行建出來的。
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      # 信任發佈要 npm 11.5.1 以上，Node 24 內建的不一定夠新
+      - run: npm install -g npm@11.16.0
+      # release 的 tag 要跟 package.json 的版本一樣，免得發錯版
+      - name: Check that the release tag matches package.json
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "package.json is $version but the release is $GITHUB_REF_NAME"
+            exit 1
+          fi
+      # npm ci 會跑 prepare，建出 dist/
+      - run: npm ci
+      - run: npm test
+      - run: npm publish --provenance

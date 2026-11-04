@@ -88,6 +88,34 @@ test('keeps the view where it is after adding something', async ({ page }) => {
   expect(await world.getAttribute('style')).toBe(panned);
 });
 
+// 編輯中的元件在最上層：後加、疊在上面的元件不會擋住展開的輸入框
+test('keeps the element being edited on top of whatever overlaps it', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Variable', exact: true }).click();
+  const variable = page.getByRole('group', { name: /^Variable/ });
+  const v = (await variable.boundingBox())!;
+  // 後加的陣列拖過來，蓋住變數右邊（值的那一半）
+  await page.getByRole('button', { name: 'Array', exact: true }).click();
+  const array = page.getByRole('group', { name: /^Array nums/ });
+  const cell = (await array.getByTitle('1', { exact: true }).boundingBox())!;
+  await page.mouse.move(cell.x + cell.width / 2, cell.y + cell.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(v.x + v.width / 2 + cell.width / 2, v.y + v.height / 2, { steps: 5 });
+  await page.mouse.up();
+
+  // 點變數露出來的左邊開始編輯：值的輸入框整個點得到、看得到
+  await page.mouse.dblclick(v.x + 4, v.y + v.height / 2);
+  await expect(variable.getByRole('textbox', { name: 'Variable name' })).toBeFocused();
+  const value = variable.getByRole('textbox', { name: 'Variable value' });
+  await expect(value).toBeVisible();
+  const box = (await value.boundingBox())!;
+  const onTop = await page.evaluate(
+    ([x, y]) => document.elementFromPoint(x, y)?.closest('[data-el]')?.getAttribute('aria-label') ?? '',
+    [box.x + box.width / 2, box.y + box.height / 2],
+  );
+  expect(onTop).toMatch(/^Variable/);
+});
+
 test('clears the canvas after confirming, and undo brings it back', async ({ page }) => {
   await page.goto('./');
   const clear = page.getByRole('button', { name: 'Clear canvas' });
@@ -233,10 +261,10 @@ test('records steps and plays them back with notes', async ({ page }) => {
   await page.getByRole('button', { name: 'Pointer', exact: true }).click();
   const pointer = page.getByRole('group', { name: /^Pointer i/ });
 
-  // 每一步：記下畫面，再把指標往右移一格
+  // 每一步：記下畫面，再把指標往右移一格（指標一直選著；連點兩下會變成編輯名稱）
+  await pointer.click();
   for (let i = 0; i < 3; i += 1) {
     await page.keyboard.press('s');
-    await pointer.click();
     await page.keyboard.press('ArrowRight');
   }
   await expect(pointer).toHaveAccessibleName('Pointer i at index 3');

@@ -61,9 +61,9 @@ type Gesture =
   | { kind: 'pen'; pointerId: number; points: number[] }
   | { kind: 'erase'; pointerId: number; erased: boolean }
   | { kind: 'arrow'; pointerId: number; from: m.ArrowEnd; fromPoint: m.Point; head: 'end' | 'none' }
-  | { kind: 'shape'; pointerId: number; variant: m.ShapeVariant; from: m.Point }
+  | { kind: 'shape'; pointerId: number; variant: m.ShapeVariant; from: m.Point; to: m.Point }
   | { kind: 'marquee'; pointerId: number; start: m.Point; base: ReadonlySet<string> }
-  | { kind: 'resize'; pointerId: number; id: string; start: m.Point; base: m.BoardDoc; w: number; h: number; moved: boolean }
+  | { kind: 'resize'; pointerId: number; id: string; start: m.Point; to: m.Point; base: m.BoardDoc; w: number; h: number; moved: boolean }
   | { kind: 'pinch'; startDistance: number; startMid: m.Point; view: View };
 
 type Draft =
@@ -73,6 +73,9 @@ type Draft =
   | { kind: 'marquee'; rect: m.Rect };
 
 const clampZoom = (zoom: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
+
+/** 按住 Shift 或 Ctrl（Mac 也可以用 ⌘）：畫正方形、正圓，拖右下角調整大小時維持原本的形狀 */
+const keepShape = (e: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }) => e.shiftKey || e.ctrlKey || e.metaKey;
 
 /**
  * 講解模式由使用白板的一方提供：照著記好的步驟講解時，播放列下方放什麼（計時、錄音），
@@ -836,7 +839,7 @@ function Editor<R>({
     const handleOf = target.closest<HTMLElement>('[data-handle]') ? elId : undefined;
     const handled = handleOf ? m.findElement(doc, handleOf) : undefined;
     if (tool === 'select' && handled?.type === 'shape') {
-      gesture.current = { kind: 'resize', pointerId: e.pointerId, id: handled.id, start: world, base: doc, w: handled.w, h: handled.h, moved: false };
+      gesture.current = { kind: 'resize', pointerId: e.pointerId, id: handled.id, start: world, to: world, base: doc, w: handled.w, h: handled.h, moved: false };
       return;
     }
 
@@ -914,7 +917,7 @@ function Editor<R>({
       }
       case 'rect':
       case 'ellipse': {
-        gesture.current = { kind: 'shape', pointerId: e.pointerId, variant: tool, from: world };
+        gesture.current = { kind: 'shape', pointerId: e.pointerId, variant: tool, from: world, to: world };
         setDraft({ kind: 'shape', shape: m.shapeFromDrag('draft', tool, world, world, color) });
         return;
       }
@@ -930,6 +933,35 @@ function Editor<R>({
         return;
     }
   };
+
+  /** 畫框框的預覽；keep 是按住 Shift 或 Ctrl：正方形、正圓 */
+  const drawShape = useCallback(
+    (g: Extract<Gesture, { kind: 'shape' }>, keep: boolean) =>
+      setDraft({ kind: 'shape', shape: m.shapeFromDrag('draft', g.variant, g.from, g.to, color, keep) }),
+    [color],
+  );
+  /** 拖右下角調整大小；keep 是按住 Shift 或 Ctrl：維持原本的形狀，正圓拉大縮小還是正圓 */
+  const resizeTo = useCallback((g: Extract<Gesture, { kind: 'resize' }>, keep: boolean) => {
+    const size = { w: g.w + g.to.x - g.start.x, h: g.h + g.to.y - g.start.y };
+    const next = keep ? m.keepRatio(g, size) : size;
+    setHistory((h) => m.replace(h, m.resizeShape(g.base, g.id, next.w, next.h)));
+  }, []);
+
+  // 拖曳到一半才按下或放開 Shift、Ctrl：不用等滑鼠再動，馬上換成正圓（或換回來）
+  useEffect(() => {
+    const onModifier = (e: KeyboardEvent) => {
+      if (e.key !== 'Shift' && e.key !== 'Control' && e.key !== 'Meta') return;
+      const g = gesture.current;
+      if (g?.kind === 'shape') drawShape(g, keepShape(e));
+      else if (g?.kind === 'resize' && g.moved) resizeTo(g, keepShape(e));
+    };
+    window.addEventListener('keydown', onModifier);
+    window.addEventListener('keyup', onModifier);
+    return () => {
+      window.removeEventListener('keydown', onModifier);
+      window.removeEventListener('keyup', onModifier);
+    };
+  }, [drawShape, resizeTo]);
 
   const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (collab) room.cursor(toWorld(e.clientX, e.clientY));
@@ -979,7 +1011,8 @@ function Editor<R>({
         setDraft({ kind: 'arrow', from: g.fromPoint, to: world, head: g.head });
         return;
       case 'shape':
-        setDraft({ kind: 'shape', shape: m.shapeFromDrag('draft', g.variant, g.from, world, color, e.shiftKey) });
+        g.to = world;
+        drawShape(g, keepShape(e));
         return;
       case 'marquee': {
         const rect = m.rectFromCorners(g.start, world);
@@ -988,13 +1021,12 @@ function Editor<R>({
         return;
       }
       case 'resize': {
-        const dx = world.x - g.start.x;
-        const dy = world.y - g.start.y;
         if (!g.moved) {
           g.moved = true;
           setHistory((h) => m.checkpoint(h));
         }
-        setHistory((h) => m.replace(h, m.resizeShape(g.base, g.id, g.w + dx, g.h + dy)));
+        g.to = world;
+        resizeTo(g, keepShape(e));
         return;
       }
     }
@@ -1046,7 +1078,7 @@ function Editor<R>({
         const world = toWorld(e.clientX, e.clientY);
         // 只是點一下（沒拖出大小）就不畫
         if (Math.hypot(world.x - g.from.x, world.y - g.from.y) * view.zoom < 6) return;
-        const shape = m.shapeFromDrag(m.newId(doc), g.variant, g.from, world, color, e.shiftKey);
+        const shape = m.shapeFromDrag(m.newId(doc), g.variant, g.from, world, color, keepShape(e));
         apply(m.addElement(doc, shape));
         setSelection(new Set([shape.id]));
         setTool('select');

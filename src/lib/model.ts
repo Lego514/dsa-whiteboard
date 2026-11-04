@@ -2085,6 +2085,16 @@ export function shapeFromDrag(id: string, variant: ShapeVariant, from: Point, to
   return { type: 'shape', id, variant, x: Math.round(x), y: Math.round(y), w: Math.round(Math.max(8, w)), h: Math.round(Math.max(8, h)), color };
 }
 
+/**
+ * 維持原本的長寬比調整大小（正圓還是正圓）：把拖到的大小投影到原本的對角線上，
+ * 往右、往下或斜著拖都能放大縮小；最短的邊至少 8
+ */
+export function keepRatio(base: { w: number; h: number }, size: { w: number; h: number }): { w: number; h: number } {
+  const projected = (size.w * base.w + size.h * base.h) / (base.w * base.w + base.h * base.h);
+  const scale = Math.max(projected, 8 / Math.min(base.w, base.h));
+  return { w: base.w * scale, h: base.h * scale };
+}
+
 /** 拖右下角調整框的大小 */
 export function resizeShape(doc: BoardDoc, id: string, w: number, h: number): BoardDoc {
   return updateElement<ElementOf<'shape'>>(doc, id, { w: Math.round(Math.max(8, w)), h: Math.round(Math.max(8, h)) });

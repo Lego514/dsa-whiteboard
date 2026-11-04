@@ -21,6 +21,7 @@ import {
   INDEX_H,
   initHistory,
   insertCell,
+  keepRatio,
   LABEL_H,
   moveElements,
   nextPointerName,
@@ -330,6 +331,26 @@ describe('rectangles and ellipses', () => {
     expect(doc.elements[0]).toMatchObject({ color: 'green' });
     expect(doc.elements[1]).not.toHaveProperty('color');
     expect(boardDocSchema.safeParse(doc).success).toBe(true);
+  });
+
+  it('keeps the shape while resizing with Shift or Ctrl, so a circle stays a circle', () => {
+    // 正圓：往右下、只往右、往左上拖都還是正圓
+    expect(keepRatio({ w: 100, h: 100 }, { w: 140, h: 140 })).toEqual({ w: 140, h: 140 });
+    expect(keepRatio({ w: 100, h: 100 }, { w: 140, h: 100 })).toEqual({ w: 120, h: 120 });
+    expect(keepRatio({ w: 100, h: 100 }, { w: 60, h: 100 })).toEqual({ w: 80, h: 80 });
+    expect(keepRatio({ w: 100, h: 100 }, { w: 50, h: 70 })).toEqual({ w: 60, h: 60 });
+    // 橢圓維持 2:1
+    const wide = keepRatio({ w: 100, h: 50 }, { w: 200, h: 100 });
+    expect(wide).toEqual({ w: 200, h: 100 });
+    const shrunk = keepRatio({ w: 100, h: 50 }, { w: 80, h: 30 });
+    expect(shrunk.w / shrunk.h).toBeCloseTo(2);
+    // 縮到最小：短的那邊至少 8，形狀不變
+    expect(keepRatio({ w: 100, h: 50 }, { w: -500, h: -500 })).toEqual({ w: 16, h: 8 });
+    // 套用後寬高一樣，存起來的正圓不會差一個像素
+    const circle = shapeFromDrag('c', 'ellipse', { x: 0, y: 0 }, { x: 90, y: 90 }, 'ink');
+    const size = keepRatio(circle, { w: 133, h: 101 });
+    const [resized] = resizeShape({ elements: [circle] }, 'c', size.w, size.h).elements as ElementOf<'shape'>[];
+    expect(resized.w).toBe(resized.h);
   });
 });
 

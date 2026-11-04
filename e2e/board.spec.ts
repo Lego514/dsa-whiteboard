@@ -111,6 +111,35 @@ test('clears the canvas after confirming, and undo brings it back', async ({ pag
   await expect(page.getByRole('group', { name: /^Sticky note/ })).toBeVisible();
 });
 
+// 使用說明：有滑鼠的看鍵帽和小滑鼠，手機看觸控手勢；各元件的用法收起來，點開才看到
+test('shows shortcuts as keys and a mouse, and each element’s tips folded', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'How to use' }).click();
+  const help = page.locator('.board-help');
+  await expect(help.getByRole('heading', { name: 'How to use' })).toBeVisible();
+  const touchOnly = await page.evaluate(() => matchMedia('(hover: none) and (pointer: coarse)').matches);
+  if (touchOnly) {
+    const touch = help.getByRole('region', { name: 'Touch' });
+    await expect(touch.getByRole('img', { name: 'Double-tap' })).toBeVisible();
+    await expect(touch).toContainText('Pan with two fingers, pinch to zoom');
+    await expect(help.getByRole('region', { name: 'Edit' })).toBeHidden();
+  } else {
+    await expect(help.getByRole('region', { name: 'Touch' })).toBeHidden();
+    const edit = help.getByRole('region', { name: 'Edit' });
+    await expect(edit.getByRole('img', { name: 'Double-click' })).toBeVisible();
+    // 重做是三顆鍵帽
+    const redo = edit.locator('div', { hasText: 'Redo' }).locator('kbd');
+    await expect(redo).toHaveText(['Ctrl', 'Shift', 'Z']);
+    await expect(help.getByRole('region', { name: 'View' }).getByRole('img', { name: 'Scroll wheel' }).first()).toBeVisible();
+    await expect(help.locator('.board-help-tools')).toContainText('Ellipse');
+  }
+  // 各元件怎麼用：平常收起來，點標題才打開
+  const list = help.locator('details', { hasText: 'Linked list' });
+  await expect(list.getByText('Click the arrow between two nodes')).toBeHidden();
+  await list.getByText('Linked list', { exact: true }).click();
+  await expect(list.getByText('Click the arrow between two nodes')).toBeVisible();
+});
+
 test('frames part of an array with a rectangle without blocking it', async ({ page }) => {
   await page.goto('./');
   await page.getByRole('button', { name: 'Array', exact: true }).click();

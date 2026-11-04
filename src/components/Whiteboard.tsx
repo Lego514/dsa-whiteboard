@@ -26,6 +26,7 @@ import { trieNodes } from '../lib/trie';
 import { ElementView } from './BoardElements';
 import { PlaybackBar, StepsWidget } from './BoardSteps';
 import { Dialog } from './Dialog';
+import { HelpPanel } from './HelpPanel';
 import { NoticeProvider, useNotice } from './Notice';
 import { PasteExampleDialog } from './PasteExample';
 import { BitsActions, TrieActions, TrieNodeActions, UnionFindActions, UnionFindNodeActions } from './StructureActions';
@@ -1790,16 +1791,7 @@ function Editor<R>({
             </button>
           </div>
 
-          {showHelp && (
-            <div className="board-help" data-ui>
-              <h2>{t.board.help}</h2>
-              <ul>
-                {t.board.shortcuts.map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {showHelp && <HelpPanel />}
         </div>
       </div>
 

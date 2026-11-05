@@ -1,5 +1,7 @@
 # DSA Whiteboard
 
+[![npm](https://img.shields.io/npm/v/dsa-whiteboard)](https://www.npmjs.com/package/dsa-whiteboard)
+
 A whiteboard for data structures and algorithms, built from scratch in React and TypeScript.
 
 **Try it:** https://lego514.github.io/dsa-whiteboard/ (no sign-up; the board is saved in your browser). Press **Share** to get a link: everyone who opens it edits the same board live, with each person's cursor and name on the canvas.
@@ -93,11 +95,13 @@ The interface is in English and Traditional Chinese. Light and dark follow your 
 
 ## Use it in a React app
 
-The package isn't on npm yet. Install it from GitHub at a release tag:
+Install it from [npm](https://www.npmjs.com/package/dsa-whiteboard):
 
 ```bash
-npm install github:Lego514/dsa-whiteboard#v0.1.9
+npm install dsa-whiteboard
 ```
+
+Each version is published from a GitHub release by GitHub Actions, with npm provenance showing the commit it was built from.
 
 React 19.2 or later is a peer dependency. zod 4 is needed only if you import `dsa-whiteboard/schema`.
 

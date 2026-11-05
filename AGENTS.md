@@ -6,7 +6,7 @@
 
 **DSA Whiteboard**：畫資料結構和演算法的白板，從頭用 React + TypeScript 寫的（沒有用繪圖套件）。同一份程式碼有三種用法：
 
-- **套件**：`dsa-whiteboard`，從 GitHub 的版本 tag 安裝（還沒上 npm）。主要使用者是刷題教練：https://github.com/Lego514/leetcode-coach（本機 `C:\dev\leetCode guide`），那邊也有一份 AGENTS.md。
+- **套件**：`dsa-whiteboard`，發佈在 npm（https://www.npmjs.com/package/dsa-whiteboard）。主要使用者是刷題教練：https://github.com/Lego514/leetcode-coach（本機 `C:\dev\leetCode guide`），那邊也有一份 AGENTS.md。
 - **獨立網站**：https://lego514.github.io/dsa-whiteboard/ （`app/`，GitHub Pages）
 - **一起編輯的伺服器**：Cloudflare Worker + 每個房間一個 Durable Object（`worker/`），網址 https://dsa-whiteboard-collab.ray1998514.workers.dev
 
@@ -77,10 +77,11 @@ e2e/            Playwright；collab.spec.ts 用兩個瀏覽器測一起編輯
 - **網站**：main 有新 commit 就部署到 GitHub Pages（`pages.yml`），建置時讀 repo variable `COLLAB_URL`（已設定）。
 - **共用伺服器**：main 上 `worker/`、`src/collab/`、`wrangler.jsonc` 等有改動時，`worker.yml` 用 repo secrets `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`（使用者已設定）部署到 Cloudflare。免費方案。
 - **發新版給刷題教練用**：
-  1. 在這個 repo 開 PR：功能，加上 `package.json`（和 `package-lock.json`）的版本號、README 安裝指令裡的 tag。
+  1. 在這個 repo 開 PR：功能，加上 `package.json`（和 `package-lock.json`）的版本號。
   2. CI 通過、使用者說合併後：`git tag -a vX.Y.Z -m vX.Y.Z`、`git push origin vX.Y.Z`、`gh release create vX.Y.Z`（寫這版的改變）。
-  3. 到刷題教練開 PR，把依賴改成新的 tag：`npm install "dsa-whiteboard@github:Lego514/dsa-whiteboard#vX.Y.Z"`。套件安裝時會跑 `prepare` 建出 `dist/`。
-- 目前最新版：v0.1.9（使用說明改成鍵帽和小滑鼠的圖、各元件的用法收起來，手機只顯示觸控手勢；在 `src/components/HelpPanel.tsx`）。v0.1.8 加了按住 Shift 或 Ctrl 畫正圓、調整大小時維持形狀，v0.1.7 加了貼上整段範例。v0.1.6 加了並查集、字典樹、位元列。v0.1.5 修了桌機上選取列蓋住逐步播放，v0.1.4 加了一起編輯、ShareControls。還沒發佈到 npm：要等使用者建 npm 帳號並在 repo 加 `NPM_TOKEN`。
+  3. 發 release 之後，`.github/workflows/publish.yml` 會自動發佈到 npm（信任發佈，不用 token，附來源證明）；它會先確認 tag 跟 `package.json` 的版本一樣。到 Actions 確認那次執行成功，`npm view dsa-whiteboard version` 是新版本。
+  4. 到刷題教練開 PR，把依賴改成新版本：`npm install dsa-whiteboard@X.Y.Z --save-exact`。
+- 目前最新版：v0.1.10（第一個由 GitHub Actions 自動發佈到 npm 的版本）。v0.1.9（使用說明改成鍵帽和小滑鼠的圖、各元件的用法收起來，手機只顯示觸控手勢；在 `src/components/HelpPanel.tsx`）。v0.1.8 加了按住 Shift 或 Ctrl 畫正圓、調整大小時維持形狀，v0.1.7 加了貼上整段範例。v0.1.6 加了並查集、字典樹、位元列。v0.1.5 修了桌機上選取列蓋住逐步播放，v0.1.4 加了一起編輯、ShareControls。v0.1.9 起發佈在 npm：0.1.9 是使用者手動發的第一版，之後都由 `publish.yml` 發佈（npm 的套件設定裡把這個 workflow 設成 trusted publisher，並且關掉 token 發佈）。
 
 ## 這台電腦的坑（Windows）
 
@@ -97,5 +98,4 @@ e2e/            Playwright；collab.spec.ts 用兩個瀏覽器測一起編輯
 ## 待辦（使用者提過、還沒做的）
 
 - 先暫緩（使用者說「先不要」）：N 元樹（當成遞迴樹的變化）、元件庫重新分組。現在每組 6/7/5/4 個，一排 4 個；新元件放進還沒滿兩排的組不會多一排，筆記那組（4 個）再加就會多一排。
-- 發佈到 npm（需要使用者的 npm 帳號）。
 - 共用房間沒有密碼：拿到連結的人都能編輯。

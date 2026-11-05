@@ -17,10 +17,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      # 不要設 registry-url：setup-node 會在 .npmrc 寫一行空的 _authToken，npm 以為已經登入，
+      # 就不走信任發佈的 OIDC 交換，發佈會被拒（403）。npm 預設就是 registry.npmjs.org
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
       # 信任發佈要 npm 11.5.1 以上，Node 24 內建的不一定夠新
       - run: npm install -g npm@11.16.0
       # release 的 tag 要跟 package.json 的版本一樣，免得發錯版

@@ -81,7 +81,7 @@ e2e/            Playwright；collab.spec.ts 用兩個瀏覽器測一起編輯
   2. CI 通過、使用者說合併後：`git tag -a vX.Y.Z -m vX.Y.Z`、`git push origin vX.Y.Z`、`gh release create vX.Y.Z`（寫這版的改變）。
   3. 發 release 之後，`.github/workflows/publish.yml` 會自動發佈到 npm（信任發佈，不用 token，附來源證明）；它會先確認 tag 跟 `package.json` 的版本一樣。到 Actions 確認那次執行成功，`npm view dsa-whiteboard version` 是新版本。
   4. 到刷題教練開 PR，把依賴改成新版本：`npm install dsa-whiteboard@X.Y.Z --save-exact`。
-- 目前最新版：v0.1.10（第一個由 GitHub Actions 自動發佈到 npm 的版本）。v0.1.9（使用說明改成鍵帽和小滑鼠的圖、各元件的用法收起來，手機只顯示觸控手勢；在 `src/components/HelpPanel.tsx`）。v0.1.8 加了按住 Shift 或 Ctrl 畫正圓、調整大小時維持形狀，v0.1.7 加了貼上整段範例。v0.1.6 加了並查集、字典樹、位元列。v0.1.5 修了桌機上選取列蓋住逐步播放，v0.1.4 加了一起編輯、ShareControls。v0.1.9 起發佈在 npm：0.1.9 是使用者手動發的第一版，之後都由 `publish.yml` 發佈（npm 的套件設定裡把這個 workflow 設成 trusted publisher，並且關掉 token 發佈）。
+- 目前最新版：v0.1.11（第一個由 GitHub Actions 自動發佈到 npm 的版本；v0.1.10 的自動發佈因為 `setup-node` 的 `registry-url` 失敗，沒有上 npm）。v0.1.9（使用說明改成鍵帽和小滑鼠的圖、各元件的用法收起來，手機只顯示觸控手勢；在 `src/components/HelpPanel.tsx`）。v0.1.8 加了按住 Shift 或 Ctrl 畫正圓、調整大小時維持形狀，v0.1.7 加了貼上整段範例。v0.1.6 加了並查集、字典樹、位元列。v0.1.5 修了桌機上選取列蓋住逐步播放，v0.1.4 加了一起編輯、ShareControls。v0.1.9 起發佈在 npm：0.1.9 是使用者手動發的第一版，之後都由 `publish.yml` 發佈（npm 的套件設定裡把這個 workflow 設成 trusted publisher，並且關掉 token 發佈）。
 
 ## 這台電腦的坑（Windows）
 

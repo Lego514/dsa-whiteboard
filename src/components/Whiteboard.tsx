@@ -187,7 +187,8 @@ function Editor<R>({
   const [edgeSel, setEdgeSel] = useState<{ id: string; index: number } | null>(null);
   const [sizes, setSizes] = useState<ReadonlyMap<string, { w: number; h: number }>>(() => new Map());
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [snap, setSnap] = useState<{ id: string; index: number } | null>(null);
+  /** 拖著指標時會吸附到哪裡；none 是鏈結串列左邊的 null，沒有格子可以標 */
+  const [snap, setSnap] = useState<m.PointerAttach | null>(null);
   const [ghost, setGhost] = useState<{ kind: m.PaletteKind; x: number; y: number } | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
@@ -454,7 +455,7 @@ function Editor<R>({
     stopEditing();
     const id = m.newId(doc);
     const fresh = m.createElement(kind, { x: 0, y: 0 }, id, t.board.defaults);
-    if (fresh.type === 'pointer') fresh.name = m.nextPointerName(doc);
+    if (fresh.type === 'pointer') fresh.name = m.nextPointerName(doc, !at && m.holdsPointers(single) ? single : undefined);
     // 拖進來的放在放開的位置；點一下的放在畫面中間附近、看得到的空位
     const area = openArea();
     let el = at ? { ...fresh, ...centered(fresh, at) } : m.placeAtCenter(doc, fresh, area.center, sizes, area.visible);
@@ -1499,7 +1500,7 @@ function Editor<R>({
                 doc={shownDoc}
                 selected={selected.has(el.id)}
                 editing={editingId === el.id}
-                snapIndex={snap?.id === el.id ? snap.index : undefined}
+                snapIndex={snap?.id === el.id && !snap.none ? snap.index : undefined}
                 cellIndex={
                   pickedList?.id === el.id
                     ? pickedIndex
@@ -1540,7 +1541,7 @@ function Editor<R>({
                       : undefined
                 }
                 onAddCol={
-                  canAdd(el) && el.type === 'table'
+                  canAdd(el) && el.type === 'table' && el.variant !== 'dict'
                     ? () => apply(m.resizeTable(doc, el.id, 'col', 1))
                     : canAdd(el) && el.type === 'dp'
                       ? () => apply(m.resizeDp(doc, el.id, 'col', 1))
@@ -1975,7 +1976,7 @@ function CellActions({ list, index, onColor, onAddPointer, onInsert, onDelete, o
         {vertical ? a.insertBelow : a.insertRight}
       </button>
       <button type="button" className="btn btn-small btn-danger" disabled={list.items.length <= 1} onClick={onDelete}>
-        {a.deleteCell}
+        {m.isLinked(list) ? a.deleteNode : a.deleteCell}
       </button>
     </>
   );
@@ -2378,7 +2379,9 @@ function SelectionActions({ el, doc, sizes, apply, onEdit }: SelectionActionsPro
   }
   // 加格子、加列、加欄用元件旁邊的「＋」；陣列刪格子先點那一格
   if (el.type === 'table') {
-    buttons.push([a.removeRow, () => apply(m.resizeTable(doc, el.id, 'row', -1))], [a.removeCol, () => apply(m.resizeTable(doc, el.id, 'col', -1))]);
+    buttons.push([a.removeRow, () => apply(m.resizeTable(doc, el.id, 'row', -1))]);
+    // 字典固定是 key、value 兩欄
+    if (el.variant !== 'dict') buttons.push([a.removeCol, () => apply(m.resizeTable(doc, el.id, 'col', -1))]);
   }
   if (el.type === 'arrow') {
     const plain = el.head === 'none';

@@ -5,7 +5,6 @@ import {
   isPlaced,
   LABEL_H,
   POINTER_H,
-  POINTER_W,
   rectOf,
   sizeOf,
   WIDE_CELL,
@@ -63,8 +62,8 @@ export function templateElements(kind: TemplateKind, nextId: () => string): Boar
       const head = nextId();
       return [
         { type: 'list', id: head, x: 0, y: 0, variant: 'linked', label: 'head', items: ['1', '2', '3', '4', '5'] },
-        // prev 一開始是 None，還沒指著節點，放在第一個節點的左下方
-        pointer(nextId(), 'prev', undefined, { x: -POINTER_W - 12, y: LABEL_H + CELL + 4 }),
+        // prev 一開始是 None：指著第一個節點左邊的 null，往右一格就到第一個節點
+        { ...pointer(nextId(), 'prev'), attach: { id: head, index: 0, none: true } },
         pointer(nextId(), 'curr', { id: head, index: 0 }),
         pointer(nextId(), 'next', { id: head, index: 1 }),
       ];

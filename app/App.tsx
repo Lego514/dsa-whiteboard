@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
-import { EMPTY_DOC, newRoomId, ROOM_ID, ShareControls, Whiteboard, type BoardDoc, type Locale } from '../src';
+import { EMPTY_DOC, guestName, isOldGuestName, newRoomId, ROOM_ID, ShareControls, Whiteboard, type BoardDoc, type Locale } from '../src';
 import { boardDocSchema } from '../src/schema';
 
 // 獨立的白板網站：一張白板存在這個瀏覽器裡，不用登入。
@@ -25,7 +25,6 @@ const TEXT = {
     storageFull: '瀏覽器的儲存空間滿了，這次的修改沒有存起來。',
     saveCopyConfirm: '要用這張共用白板取代你自己的白板嗎？你原本的白板會被蓋掉。',
     savedCopy: '已存到你的白板',
-    guest: '訪客',
   },
   en: {
     switchTo: '中',
@@ -36,7 +35,6 @@ const TEXT = {
     storageFull: 'Browser storage is full, so the latest change wasn’t saved.',
     saveCopyConfirm: 'Replace your own board with this shared one? Your current board will be overwritten.',
     savedCopy: 'Saved to your board',
-    guest: 'Guest',
   },
 } satisfies Record<Locale, unknown>;
 
@@ -108,10 +106,11 @@ function roomFromHash(): string | null {
   return id && ROOM_ID.test(id) ? id : null;
 }
 
+/** 共用時別人看到的名字：第一次用時取一個形容詞加動物；舊版自動取的「Guest 17」也換掉，自己取的名字不動 */
 function initialName(locale: Locale): string {
   const saved = storage()?.getItem(NAME_KEY)?.trim();
-  if (saved) return saved;
-  const name = `${TEXT[locale].guest} ${Math.floor(Math.random() * 90) + 10}`;
+  if (saved && !isOldGuestName(saved)) return saved;
+  const name = guestName(locale);
   storage()?.setItem(NAME_KEY, name);
   return name;
 }

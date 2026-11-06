@@ -1849,6 +1849,20 @@ button.board-link {
   font-size: 13px;
 }
 
+/* 鏈結串列左邊的 null（prev = None），由指著它的指標畫出來；虛線框表示這不是一個節點 */
+.board-pointer-none {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  border: 1.5px dashed var(--ink-3);
+  border-radius: 6px;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  pointer-events: none;
+}
+
 .board-cycle {
   position: absolute;
   top: 0;
@@ -2503,6 +2517,17 @@ input.board-dp-head-input {
   line-height: 1;
 }
 
+/* 預設名字的頭像是動物的臉，畫滿整個圓 */
+.board-peer[data-animal] {
+  overflow: hidden;
+}
+
+.board-peer svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .board-peers .board-peer + .board-peer {
   margin-left: -7px;
 }
@@ -2518,7 +2543,7 @@ input.board-dp-head-input {
   inset: auto;
   top: calc(52px + env(safe-area-inset-top));
   right: 12px;
-  width: min(300px, calc(100vw - 24px));
+  width: min(330px, calc(100vw - 24px));
   margin: 0;
   padding: 12px;
   border: 1px solid var(--rule);
@@ -2556,6 +2581,70 @@ input.board-dp-head-input {
   font-size: 14px;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+/* 按「共用」先看到的說明：三點寫清楚會發生什麼，再按「建立連結」 */
+.board-share-intro {
+  width: min(340px, calc(100vw - 24px));
+  padding: 14px 16px;
+}
+
+.board-share-title {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.board-share-points {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  list-style: disc;
+  color: var(--ink-2);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.board-share-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+/* 房間選單最上面：連結本身，複製不了也能自己選起來複製 */
+.board-room-link {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.board-room-link-row {
+  display: flex;
+  gap: 6px;
+}
+
+.board-room-link-input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--sheet-2);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.board-room-note {
+  margin: 6px 0 0;
+  color: var(--ink-3);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.board-room-note[data-failed] {
+  color: var(--danger);
 }
 
 .board-room-actions {

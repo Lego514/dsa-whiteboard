@@ -28,6 +28,7 @@ import {
   LABEL_H,
   LINK_GAP,
   linksOf,
+  noneLabel,
   pointsDown,
   prunedNodes,
   REC_H,
@@ -102,6 +103,8 @@ export function ElementView({ el, doc, selected, editing, register, ...rest }: E
   const { t } = useI18n();
   const at = el.type === 'pointer' ? pointerPosition(doc, el) : el;
   const fixedSize = (el.type === 'text' && el.variant !== 'code') || el.type === 'var' ? undefined : sizeOf(el);
+  // 指著鏈結串列左邊 null 的指標，順便畫出那個 null（位置相對於指標）
+  const none = el.type === 'pointer' ? noneLabel(doc, el) : undefined;
   return (
     <div
       ref={(node) => register(el.id, node)}
@@ -122,6 +125,11 @@ export function ElementView({ el, doc, selected, editing, register, ...rest }: E
       }}
     >
       {el.type === 'shape' ? <ShapeBody el={el} selected={selected} /> : <Body el={el} editing={editing} {...rest} />}
+      {none && (
+        <span className="board-pointer-none" style={{ left: none.x - at.x + 2, top: none.y - at.y + 6, width: none.w - 4, height: none.h - 12 }} aria-hidden>
+          null
+        </span>
+      )}
     </div>
   );
 }
@@ -1428,6 +1436,7 @@ function describe(el: Placed, doc: BoardDoc, t: ReturnType<typeof useI18n>['t'])
       const target = doc.elements.find((x) => x.id === el.attach!.id);
       if (target?.type === 'tree' || target?.type === 'graph') return t.board.pointerAtNode(el.name, target.nodes[el.attach.index] ?? '');
       if (target?.type === 'recursion') return t.board.pointerAtNode(el.name, target.nodes[el.attach.index]?.text ?? '');
+      if (el.attach.none && target?.type === 'list' && target.variant === 'linked') return t.board.pointerAtNone(el.name);
       return t.board.pointerAt(el.name, el.attach.index);
     }
     case 'shape':

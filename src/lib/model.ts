@@ -219,28 +219,62 @@ function slotOf(target: ElementOf<'list'> | NodeHolder, index: number): number {
 }
 
 /** 吸附的指標放在格子下面（二元樹是節點上面）；同一格有好幾個指標時往外疊 */
+/** 鏈結串列第一個節點左邊的 null：指標可以指著它（prev = None） */
+export function noneSlot(list: ElementOf<'list'>): Rect {
+  const first = cellRect(list, 0);
+  return { ...first, x: first.x - LINK_GAP - CELL };
+}
+
+/** 指標是不是指著鏈結串列左邊的 null */
+export function atNone(doc: BoardDoc, pointer: ElementOf<'pointer'>): boolean {
+  if (!pointer.attach?.none) return false;
+  const target = findElement(doc, pointer.attach.id);
+  return !!target && isLinked(target);
+}
+
+/** 指著同一格（或同一個 null）的指標：-1 代表左邊的 null */
+function pointerSlot(doc: BoardDoc, target: ElementOf<'list'> | NodeHolder, pointer: ElementOf<'pointer'>): number {
+  return atNone(doc, pointer) ? -1 : slotOf(target, pointer.attach!.index);
+}
+
+/** 指著同一格的指標往下疊；第幾個 */
+function pointerStack(doc: BoardDoc, target: ElementOf<'list'> | NodeHolder, pointer: ElementOf<'pointer'>): number {
+  const slot = pointerSlot(doc, target, pointer);
+  const sameCell = doc.elements.filter(
+    (el): el is ElementOf<'pointer'> => el.type === 'pointer' && el.attach?.id === target.id && pointerSlot(doc, target, el) === slot,
+  );
+  return Math.max(0, sameCell.findIndex((el) => el.id === pointer.id));
+}
+
+/**
+ * 指著鏈結串列左邊 null 的指標，那個「null」由疊在最上面的指標畫出來（串列本身不知道有沒有指標指著它）。
+ * 回傳那一格的位置；不是這個指標畫就是 undefined
+ */
+export function noneLabel(doc: BoardDoc, pointer: ElementOf<'pointer'>): Rect | undefined {
+  if (!atNone(doc, pointer)) return undefined;
+  const target = findElement(doc, pointer.attach!.id) as ElementOf<'list'>;
+  return pointerStack(doc, target, pointer) === 0 ? noneSlot(target) : undefined;
+}
+
 export function pointerPosition(doc: BoardDoc, pointer: ElementOf<'pointer'>): Point {
   const target = pointer.attach && findElement(doc, pointer.attach.id);
   if (!pointer.attach || !holdsPointers(target)) return { x: pointer.x, y: pointer.y };
-  const slot = slotOf(target, pointer.attach.index);
-  const sameCell = doc.elements.filter(
-    (el): el is ElementOf<'pointer'> => el.type === 'pointer' && el.attach?.id === target.id && slotOf(target, el.attach.index) === slot,
-  );
-  const stack = Math.max(0, sameCell.findIndex((el) => el.id === pointer.id));
+  const stack = pointerStack(doc, target, pointer);
   if (target.type !== 'list' || heapTreeOnly(target)) {
-    const center = nodeCenters(target).get(slot);
+    const center = nodeCenters(target).get(slotOf(target, pointer.attach.index));
     if (!center) return { x: pointer.x, y: pointer.y };
     const half = target.type === 'recursion' ? REC_H / 2 : TREE_D / 2;
     return { x: target.x + center.x - POINTER_W / 2, y: target.y + center.y - half - POINTER_H - 2 - stack * POINTER_H };
   }
-  const cell = cellRect(target, slot);
+  const cell = atNone(doc, pointer) ? noneSlot(target) : cellRect(target, slotOf(target, pointer.attach.index));
   return { x: cell.x + CELL / 2 - POINTER_W / 2, y: cell.y + CELL + belowCells(target) + stack * POINTER_H };
 }
 
 /** 指標放在 at 時，最近的格子或樹節點；太遠就不吸附 */
-export function snapTarget(doc: BoardDoc, at: Point): { id: string; index: number } | undefined {
+export function snapTarget(doc: BoardDoc, at: Point): PointerAttach | undefined {
   // 還沒吸附的指標箭頭朝上，尖端在最上面
   const tip = { x: at.x + POINTER_W / 2, y: at.y };
+  // index -1 是鏈結串列左邊的 null
   let best: { id: string; index: number; distance: number } | undefined;
   const consider = (id: string, index: number, x: number, y: number) => {
     const distance = Math.hypot(x - tip.x, y - tip.y);
@@ -254,10 +288,17 @@ export function snapTarget(doc: BoardDoc, at: Point): { id: string; index: numbe
         const cell = cellRect(el, index);
         consider(el.id, index, cell.x + CELL / 2, cell.y + CELL + belowCells(el) - 2);
       }
+      if (isLinked(el)) {
+        const none = noneSlot(el);
+        consider(el.id, -1, none.x + CELL / 2, none.y + CELL + belowCells(el) - 2);
+      }
     }
   }
-  return best && { id: best.id, index: best.index };
+  if (!best) return undefined;
+  return best.index === -1 ? { id: best.id, index: 0, none: true } : { id: best.id, index: best.index };
 }
+
+export type PointerAttach = NonNullable<ElementOf<'pointer'>['attach']>;
 
 /** 用方向鍵把吸附在陣列或串列上的指標往左右移一格 */
 export function shiftPointer(doc: BoardDoc, id: string, delta: number): BoardDoc {
@@ -270,8 +311,11 @@ export function shiftPointer(doc: BoardDoc, id: string, delta: number): BoardDoc
       return { ...el, attach: { ...el.attach, index: (((el.attach.index + delta) % n) + n) % n } };
     }
     if (!target || !(isIndexed(target) || isLinked(target))) return el;
-    const index = Math.min(Math.max(0, el.attach.index + delta), target.items.length - 1);
-    return { ...el, attach: { ...el.attach, index } };
+    // 鏈結串列：第一個節點再往左是 null，從 null 往右回到第一個節點
+    const from = el.attach.none && isLinked(target) ? -1 : el.attach.index;
+    const lowest = isLinked(target) ? -1 : 0;
+    const index = Math.min(Math.max(lowest, from + delta), target.items.length - 1);
+    return { ...el, attach: index === -1 ? { id: el.attach.id, index: 0, none: true } : { id: el.attach.id, index } };
   });
 }
 
@@ -537,9 +581,14 @@ export function pointerTone(name: string): PointerTone {
   return POINTER_TONES[index % POINTER_TONES.length];
 }
 
-export function nextPointerName(doc: BoardDoc): string {
+/** 樹和圖上習慣叫 node，不是陣列的 i、j */
+const NODE_POINTER_NAMES = ['node', 'cur', 'parent', 'child', 'p', 'q'];
+
+/** 新指標用第一個還沒用過的常見名稱；要放在樹、圖或遞迴樹上時用節點的名稱 */
+export function nextPointerName(doc: BoardDoc, target?: BoardElement): string {
   const used = new Set(doc.elements.flatMap((el) => (el.type === 'pointer' ? [el.name] : [])));
-  return POINTER_NAMES.find((name) => !used.has(name)) ?? `p${used.size + 1}`;
+  const onNodes = target?.type === 'tree' || target?.type === 'graph' || target?.type === 'recursion';
+  return (onNodes ? NODE_POINTER_NAMES : POINTER_NAMES).find((name) => !used.has(name)) ?? `p${used.size + 1}`;
 }
 
 // ---------- 修改 ----------
@@ -818,7 +867,7 @@ export function resizeList(doc: BoardDoc, id: string, delta: 1 | -1): BoardDoc {
 
 /** 在陣列的某一格加一個指標，名字用下一個還沒用過的 */
 export function addPointerAt(doc: BoardDoc, listId: string, index: number, id: string): BoardDoc {
-  return addElement(doc, { type: 'pointer', id, x: 0, y: 0, name: nextPointerName(doc), attach: { id: listId, index } });
+  return addElement(doc, { type: 'pointer', id, x: 0, y: 0, name: nextPointerName(doc, findElement(doc, listId)), attach: { id: listId, index } });
 }
 
 // ---------- 二元樹 ----------

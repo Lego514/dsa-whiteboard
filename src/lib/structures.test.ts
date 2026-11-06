@@ -17,12 +17,15 @@ import {
   LABEL_H,
   LINK_GAP,
   linksOf,
+  noneLabel,
+  noneSlot,
   POINTER_H,
   POINTER_W,
   pointerPosition,
   pointsDown,
   setCycle,
   setNodeColor,
+  shiftPointer,
   settleElement,
   sizeOf,
   snapTarget,
@@ -70,6 +73,40 @@ describe('linked lists', () => {
     doc = toggleLink(doc, 'll', 1);
     // 全部往後時不存
     expect(list(doc).links).toBeUndefined();
+  });
+
+  it('lets a pointer step left of the first node onto null, like prev = None, and back', () => {
+    const doc = addPointerAt(linkedDoc(), 'll', 0, 'p');
+    const p = (d: BoardDoc) => findElement(d, 'p') as ElementOf<'pointer'>;
+    const atNull = shiftPointer(doc, 'p', -1);
+    expect(p(atNull).attach).toEqual({ id: 'll', index: 0, none: true });
+    // 指標在 null 下面：第一個節點左邊空一個箭頭的距離
+    const slot = noneSlot(list(doc));
+    expect(slot.x).toBe(-LINK_GAP - CELL);
+    expect(pointerPosition(atNull, p(atNull)).x).toBe(slot.x + CELL / 2 - POINTER_W / 2);
+    expect(noneLabel(atNull, p(atNull))).toEqual(slot);
+    // 再往左還是 null；往右回到第一個節點
+    expect(p(shiftPointer(atNull, 'p', -1)).attach).toEqual({ id: 'll', index: 0, none: true });
+    expect(p(shiftPointer(atNull, 'p', 1)).attach).toEqual({ id: 'll', index: 0 });
+    // 第二個指著 null 的指標疊在下面，null 只畫一次
+    const two = addPointerAt(atNull, 'll', 0, 'q');
+    const both = shiftPointer(two, 'q', -1);
+    const q = findElement(both, 'q') as ElementOf<'pointer'>;
+    expect(pointerPosition(both, q).y).toBe(pointerPosition(both, p(both)).y + POINTER_H);
+    expect(noneLabel(both, q)).toBeUndefined();
+    // 拖到 null 下面放開也會吸附
+    const tip = { x: slot.x + CELL / 2 - POINTER_W / 2, y: slot.y + CELL + 2 };
+    expect(snapTarget(doc, tip)).toEqual({ id: 'll', index: 0, none: true });
+    // 存檔格式收得下
+    expect(boardDocSchema.safeParse(atNull).success).toBe(true);
+    // 匯出的圖：尾巴的 null 加上左邊的 null
+    expect(boardToSvg(atNull, undefined, { measure: estimateWidth, front: '#000', back: '#fff' })!.svg.match(/>null<\/text>/g)).toHaveLength(2);
+  });
+
+  it('keeps array pointers on the array: there is no null to the left of index 0', () => {
+    const doc = addElement(EMPTY_DOC, { ...createElement('array', { x: 0, y: 0 }, 'a', texts) } as ElementOf<'list'>);
+    const moved = shiftPointer(addPointerAt(doc, 'a', 0, 'p'), 'p', -1);
+    expect((findElement(moved, 'p') as ElementOf<'pointer'>).attach).toEqual({ id: 'a', index: 0 });
   });
 
   it('keeps links and the cycle lined up when nodes are inserted or deleted', () => {

@@ -84,6 +84,15 @@ type Draft =
 
 const clampZoom = (zoom: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
 
+/**
+ * 字還看得清楚的最小縮放。打開白板時不會為了塞下全部縮得比這更小（手機上會縮到 35%，什麼都看不清楚）；
+ * 縮得比這小時點一下加新東西，先放大回 100%，新加的才不會小到看不見
+ */
+const READABLE_ZOOM = 0.5;
+
+/** 節點散開、中間大多是空白的元件：沒選取時只有點到節點、邊、名稱才算點到 */
+const SPARSE: ReadonlySet<string> = new Set(['tree', 'graph', 'recursion', 'trie', 'unionFind']);
+
 /** 按住 Shift 或 Ctrl（Mac 也可以用 ⌘）：畫正方形、正圓，拖右下角調整大小時維持原本的形狀 */
 const keepShape = (e: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }) => e.shiftKey || e.ctrlKey || e.metaKey;
 
@@ -192,6 +201,8 @@ function Editor<R>({
   const [ghost, setGhost] = useState<{ kind: m.PaletteKind; x: number; y: number } | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  /** 清空時要不要連步驟一起清；預設要，清完的白板播放出來才不會是舊的畫面 */
+  const [clearSteps, setClearSteps] = useState(true);
   const [pasting, setPasting] = useState(false);
   /** 手機上顏色收成一顆，點了才展開 */
   const [colorsOpen, setColorsOpen] = useState(false);
@@ -323,11 +334,21 @@ function Editor<R>({
     const r = viewportRect();
     return { x: (clientX - r.left - view.x) / view.zoom, y: (clientY - r.top - view.y) / view.zoom };
   };
-  /** 新元件要放的地方：畫面上沒被上下兩排擋住的範圍（世界座標）和它的中心 */
+  /**
+   * 新元件要放的地方：畫面上沒被上下兩排擋住的範圍（世界座標）和它的中心。
+   * 縮得太小時先以畫面中心放大回 100%，照放大後的畫面找位置
+   */
   const openArea = (): { center: m.Point; visible: m.Rect } => {
     const r = viewportRect();
-    const a = toWorld(r.left + OPEN_INSET.side, r.top + OPEN_INSET.top);
-    const b = toWorld(r.right - OPEN_INSET.side, r.bottom - OPEN_INSET.bottom);
+    let v = view;
+    if (v.zoom < READABLE_ZOOM) {
+      const k = 1 / v.zoom;
+      v = { zoom: 1, x: r.width / 2 - (r.width / 2 - v.x) * k, y: r.height / 2 - (r.height / 2 - v.y) * k };
+      setView(v);
+    }
+    const world = (sx: number, sy: number): m.Point => ({ x: (sx - v.x) / v.zoom, y: (sy - v.y) / v.zoom });
+    const a = world(OPEN_INSET.side, OPEN_INSET.top);
+    const b = world(r.width - OPEN_INSET.side, r.height - OPEN_INSET.bottom);
     const visible = { x: a.x, y: a.y, w: Math.max(0, b.x - a.x), h: Math.max(0, b.y - a.y) };
     return { center: { x: visible.x + visible.w / 2, y: visible.y + visible.h / 2 }, visible };
   };
@@ -355,7 +376,9 @@ function Editor<R>({
       return;
     }
     const pad = 60;
-    const zoom = clampZoom(Math.min((r.width - pad * 2) / Math.max(bounds.w, 1), (r.height - pad * 2) / Math.max(bounds.h, 1), 1.25));
+    // 塞不下時不縮到看不清楚：寧可只看到中間的一部分
+    const fit = Math.min((r.width - pad * 2) / Math.max(bounds.w, 1), (r.height - pad * 2) / Math.max(bounds.h, 1), 1.25);
+    const zoom = clampZoom(Math.max(READABLE_ZOOM, fit));
     setView({ zoom, x: r.width / 2 - (bounds.x + bounds.w / 2) * zoom, y: r.height / 2 - (bounds.y + bounds.h / 2) * zoom });
   }, []);
 
@@ -711,22 +734,29 @@ function Editor<R>({
       bitsValue: t.board.bits.value,
       sets: t.board.unionFind.sets,
       trieResult: t.board.trie.result,
+      dictHead: t.board.dictHead,
     });
     if (!out) return;
     try {
       const blob = await svgToPng(out.svg, out.width, out.height);
-      download(blob, `${exportName}${playIndex === null ? '' : `-step-${playIndex + 1}`}.png`);
+      const name = `${exportName}${playIndex === null ? '' : `-step-${playIndex + 1}`}.png`;
+      download(blob, name);
+      // 下載列不一定看得到（有些瀏覽器直接存進下載資料夾），說一聲存了什麼
+      toast(t.board.exported(name));
     } catch {
       toast(t.board.exportFailed);
     }
   };
 
-  const clearBoard = () => {
+  const clearBoard = (withSteps: boolean) => {
     setConfirmClear(false);
     setEditingId(null);
     setCellSel(null);
     setSelection(new Set());
-    apply(m.clearElements(doc));
+    apply(m.clearElements(doc, withSteps));
+    // 空白的白板回到 100%，從頭開始畫
+    const node = viewportRef.current;
+    if (node) setView({ x: node.clientWidth / 2, y: node.clientHeight / 2, zoom: 1 });
   };
 
   const undo = () => {
@@ -889,7 +919,12 @@ function Editor<R>({
     }
 
     const world = toWorld(e.clientX, e.clientY);
-    const elId = target.closest<HTMLElement>('[data-el]')?.dataset.el;
+    const hitId = target.closest<HTMLElement>('[data-el]')?.dataset.el;
+    // 樹、圖、遞迴樹這些散開的結構，外框比節點大很多又看不到：還沒選取時，點在節點之間的空白不算點到它，
+    // 不然以為是在空白處拖（框選），整棵樹卻被搬走。點節點、邊、名稱照樣選得到，選取後外框出現，空白處也能拖
+    const sparse = hitId !== undefined && SPARSE.has(m.findElement(doc, hitId)?.type ?? '');
+    const onPart = target.closest('[data-cell], [data-edge], .board-label, .board-label-row');
+    const elId = sparse && !selected.has(hitId) && !onPart ? undefined : hitId;
     if (editingId && elId !== editingId) stopEditing();
     if (editingId && elId === editingId) return;
 
@@ -909,8 +944,13 @@ function Editor<R>({
         if (next.has(connector)) next.delete(connector);
         else next.add(connector);
         setSelection(next);
-      } else {
-        setSelection(new Set([connector]));
+        return;
+      }
+      const ids = selected.has(connector) ? selected : new Set([connector]);
+      setSelection(ids);
+      // 筆跡點到就能拖著走（箭頭的兩端連在元件上，維持只選取）
+      if (m.findElement(doc, connector)?.type === 'stroke') {
+        gesture.current = { kind: 'move', pointerId: e.pointerId, start: world, ids, base: doc, moved: false, clicked: connector, cell: undefined };
       }
       return;
     }
@@ -1825,7 +1865,10 @@ function Editor<R>({
                 aria-label={t.board.clear}
                 title={t.board.clear}
                 disabled={doc.elements.length === 0}
-                onClick={() => setConfirmClear(true)}
+                onClick={() => {
+                  setClearSteps(true);
+                  setConfirmClear(true);
+                }}
               >
                 {ICON_CLEAR}
               </button>
@@ -1871,13 +1914,19 @@ function Editor<R>({
             <button type="button" className="btn" onClick={() => setConfirmClear(false)}>
               {t.common.cancel}
             </button>
-            <button type="button" className="btn btn-danger" onClick={clearBoard}>
+            <button type="button" className="btn btn-danger" onClick={() => clearBoard(steps.length > 0 && clearSteps)}>
               {t.board.clearConfirm}
             </button>
           </div>
         }
       >
         <p>{t.board.clearBody}</p>
+        {steps.length > 0 && (
+          <label className="board-clear-steps">
+            <input type="checkbox" checked={clearSteps} onChange={(e) => setClearSteps(e.target.checked)} />
+            {t.board.clearSteps(steps.length)}
+          </label>
+        )}
       </Dialog>
 
       {explained && Review && <Review result={explained.result} steps={steps} onAgain={startExplain} onClose={() => setExplained(null)} />}

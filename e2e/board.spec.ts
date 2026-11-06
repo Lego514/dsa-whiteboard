@@ -206,6 +206,152 @@ test('shows there are more buttons when the selection toolbar scrolls sideways o
   expect(await world.getAttribute('style')).toBe(before);
 });
 
+test('colors text, picks up a pencil stroke, and labels a dict', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'drawing with a mouse');
+  await page.goto('./');
+  const canvas = page.getByRole('region', { name: 'Whiteboard canvas' });
+
+  // 文字選取後點色塊就換色
+  await page.getByRole('button', { name: 'Text', exact: true }).click();
+  await page.keyboard.type('O(n)');
+  await page.keyboard.press('Escape');
+  const text = page.getByRole('group', { name: 'Text: O(n)' });
+  await page.getByRole('toolbar', { name: 'Tools' }).getByRole('button', { name: 'Red', exact: true }).click();
+  await expect(text).toHaveCSS('color', /^rgb\(/);
+  const red = await text.evaluate((node) => getComputedStyle(node).color);
+  const ink = await canvas.evaluate((node) => getComputedStyle(node).color);
+  expect(red).not.toBe(ink);
+
+  // 鉛筆畫一條線，換回選取工具，點線就能選、拖得動
+  await page.keyboard.press('p');
+  const box = (await canvas.boundingBox())!;
+  const y = box.y + box.height - 160;
+  await page.mouse.move(box.x + 60, y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 200, y, { steps: 6 });
+  await page.mouse.up();
+  await page.keyboard.press('v');
+  const stroke = canvas.locator('path.board-stroke').last();
+  const before = await stroke.getAttribute('d');
+  await page.mouse.move(box.x + 130, y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 130, y - 60, { steps: 5 });
+  await page.mouse.up();
+  await expect(canvas.locator('path.board-stroke-selected')).toHaveCount(1);
+  expect(await stroke.getAttribute('d')).not.toBe(before);
+
+  // 字典上面寫 key、value
+  await page.getByRole('button', { name: 'Dict', exact: true }).click();
+  const dict = page.getByRole('group', { name: /^Dict count/ });
+  await expect(dict.locator('.board-col-indices')).toHaveText('keyvalue');
+  await expect(page.getByRole('toolbar', { name: 'Selected element' }).getByRole('button', { name: 'Remove column' })).toHaveCount(0);
+});
+
+test('clears recorded steps with the canvas unless you keep them, and starts again at 100%', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'step count text is hidden on phones');
+  await page.goto('./');
+  const steps = page.getByRole('group', { name: 'Steps', exact: true });
+  const zoom = page.locator('.board-zoom-value');
+  await page.getByRole('button', { name: 'Array', exact: true }).click();
+  await page.keyboard.press('s');
+  await expect(steps).toContainText('1 step');
+  for (let i = 0; i < 3; i += 1) await page.getByRole('button', { name: 'Zoom out' }).click();
+  await expect(zoom).not.toHaveText('100%');
+
+  // 預設連步驟一起清，播放時才不會出現已經不在的白板；清完回到 100%
+  await page.getByRole('button', { name: 'Clear canvas' }).click();
+  const confirm = page.getByRole('dialog', { name: 'Clear the whole whiteboard?' });
+  await expect(confirm.getByRole('checkbox', { name: 'Also delete the 1 recorded step' })).toBeChecked();
+  await confirm.getByRole('button', { name: 'Clear', exact: true }).click();
+  await expect(steps).toContainText('0 steps');
+  await expect(zoom).toHaveText('100%');
+  // 復原連步驟一起回來
+  await page.getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
+  await expect(steps).toContainText('1 step');
+
+  // 不勾就留著步驟
+  await page.getByRole('button', { name: 'Clear canvas' }).click();
+  await confirm.getByRole('checkbox', { name: 'Also delete the 1 recorded step' }).uncheck();
+  await confirm.getByRole('button', { name: 'Clear', exact: true }).click();
+  await expect(page.getByText('Click or drag in an element')).toBeVisible();
+  await expect(steps).toContainText('1 step');
+});
+
+test('keeps every toolbar button clear of the zoom controls on a medium-width window', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'desktop layout only');
+  for (const width of [760, 900]) {
+    await page.setViewportSize({ width, height: 600 });
+    await page.goto('./');
+    await page.getByRole('button', { name: 'Array', exact: true }).click();
+    const zoom = (await page.locator('.board-zoom').boundingBox())!;
+    for (const button of await page.getByRole('toolbar', { name: 'Tools' }).getByRole('button').all()) {
+      const box = (await button.boundingBox())!;
+      const covered = box.x < zoom.x + zoom.width && zoom.x < box.x + box.width && box.y < zoom.y + zoom.height && zoom.y < box.y + box.height;
+      expect(covered, `${width}px: ${await button.getAttribute('aria-label')}`).toBe(false);
+    }
+  }
+});
+
+test('dragging the empty space inside a tree selects by box instead of moving the tree, until the tree is selected', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'mouse drag');
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Binary tree', exact: true }).click();
+  await page.keyboard.press('Escape');
+  const tree = page.getByRole('group', { name: /^Binary tree root/ });
+  await page.mouse.click(5, 5);
+  // 找樹的外框裡一個不在節點上的點
+  const spot = await tree.evaluate((node) => {
+    const r = node.getBoundingClientRect();
+    for (let y = r.top + 4; y < r.bottom - 4; y += 4) {
+      for (let x = r.left + 4; x < r.right - 4; x += 4) {
+        const hit = document.elementFromPoint(x, y);
+        if (hit && node.contains(hit) && !hit.closest('[data-cell], [data-edge], .board-label, .board-label-row, button')) return { x, y };
+      }
+    }
+    return null;
+  });
+  expect(spot).not.toBeNull();
+  const drag = async () => {
+    await page.mouse.move(spot!.x, spot!.y);
+    await page.mouse.down();
+    await page.mouse.move(spot!.x + 80, spot!.y + 60, { steps: 5 });
+    await page.mouse.up();
+  };
+  const before = await tree.getAttribute('style');
+  await drag();
+  expect(await tree.getAttribute('style')).toBe(before);
+
+  // 點節點選取之後，外框出現，空白處也拖得動
+  await tree.locator('[data-cell="0"]').click();
+  await drag();
+  expect(await tree.getAttribute('style')).not.toBe(before);
+});
+
+test('on a phone: templates come first, Build from text fits, and a crowded board opens readable', async ({ page, isMobile }) => {
+  if (!isMobile) await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('./');
+  const palette = page.getByRole('complementary', { name: 'Elements' });
+  const template = (await palette.getByRole('button', { name: /^Two pointers/ }).boundingBox())!;
+  const array = (await palette.getByRole('button', { name: 'Array', exact: true }).boundingBox())!;
+  expect(template.x).toBeLessThan(array.x);
+
+  await palette.getByRole('button', { name: 'Array', exact: true }).click();
+  const selbar = page.getByRole('toolbar', { name: 'Selected element' });
+  await selbar.getByRole('button', { name: 'Build from text' }).click();
+  const cancel = (await selbar.getByRole('button', { name: 'Cancel' }).boundingBox())!;
+  expect(cancel.x + cancel.width).toBeLessThanOrEqual(390);
+  await selbar.getByRole('button', { name: 'Cancel' }).click();
+
+  // 東西很多時，打開不會縮到看不清楚
+  for (const name of ['DP table', 'Binary tree', 'Graph', 'Heap', 'Recursion tree']) {
+    await palette.getByRole('button', { name, exact: true }).click();
+  }
+  await expect(page.getByText('Saved on this device')).toBeVisible();
+  await page.reload();
+  const percent = Number((await page.locator('.board-zoom-value').innerText()).replace('%', ''));
+  expect(percent).toBeGreaterThanOrEqual(50);
+});
+
 test('clears the canvas after confirming, and undo brings it back', async ({ page }) => {
   await page.goto('./');
   const clear = page.getByRole('button', { name: 'Clear canvas' });
@@ -423,6 +569,8 @@ test('exports the board, or the step being played, as a PNG', async ({ page }) =
 
   const [download] = await Promise.all([page.waitForEvent('download'), exportButton.click()]);
   expect(download.suggestedFilename()).toBe('dsa-whiteboard.png');
+  // 下載列不一定看得到：畫面上說存了什麼
+  await expect(page.getByText('Saved dsa-whiteboard.png to your downloads')).toBeVisible();
   const path = await download.path();
   const { readFileSync } = await import('node:fs');
   const png = readFileSync(path);
@@ -594,7 +742,7 @@ test('builds a graph from an edge list, connects nodes, and marks an edge', asyn
   await page.goto('./');
   await page.getByRole('button', { name: 'Graph', exact: true }).click();
   const graph = page.getByRole('group', { name: /^Graph graph/ });
-  await expect(graph).toHaveAccessibleName('Graph graph: n = 4, edges = [[0,1],[0,2],[1,3]]');
+  await expect(graph).toHaveAccessibleName('Graph graph: n = 4, edges = [[0,1],[1,2],[0,3]]');
 
   const selbar = page.getByRole('toolbar', { name: 'Selected element' });
   await selbar.getByRole('button', { name: 'Build from text' }).click();

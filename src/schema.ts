@@ -24,6 +24,8 @@ export const boardElementSchema = z.discriminatedUnion('type', [
     w: z.number().min(40).max(2000),
     /** 程式碼逐行追蹤：現在跑到第幾行（從 0 數）；沒寫就是沒在追蹤 */
     line: z.number().int().min(0).max(399).optional(),
+    /** 文字的顏色（程式碼有自己的上色，不用）；沒寫是預設的墨色 */
+    color: z.enum(BOARD_COLORS).optional(),
   }),
   z.object({
     type: z.literal('list'),

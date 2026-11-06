@@ -252,6 +252,8 @@
 .board-viewport {
   position: relative;
   overflow: hidden;
+  /* 選取列依畫布（不是整個視窗）的寬度排版 */
+  container: board-canvas / inline-size;
   background-color: var(--paper);
   background-image: radial-gradient(circle, var(--rule-strong) 1px, transparent 1.3px);
   cursor: default;
@@ -1493,6 +1495,25 @@ textarea.board-text-input {
     max-width: none;
     margin: 0;
   }
+
+  /* 下方工具列左右各讓出縮放面板的寬度：視窗中等寬時工具列換成兩排，才不會有按鈕（清空、橘色）躲在縮放面板底下按不到 */
+  .board-tools {
+    max-width: calc(100% - 2 * 76px);
+  }
+
+  /* 畫布不夠寬時，選取列擠在逐步播放旁邊那一欄會疊成好幾排（DP 表疊到七排），蓋住一大塊白板：
+     改成逐步播放下面自己一整列，排數少很多 */
+  @container board-canvas (max-width: 1000px) {
+    .board-top {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .board-top .board-selbar {
+      grid-column: 1;
+      justify-self: center;
+      max-width: 100%;
+    }
+  }
 }
 
 .board-playback {
@@ -1642,10 +1663,8 @@ textarea.board-text-input {
     gap: 2px;
   }
 
-  /* 手機上元件排前面，模板放在最後；模板跟元件一樣是小格子，只留名稱 */
-  .board-templates {
-    order: 1;
-  }
+  /* 手機上模板跟元件一樣是小格子，只留名稱；排在「貼上範例」後面、元件前面，
+     不然要滑過二十幾個元件才看得到（試用時沒人找到） */
 
   .board-template {
     flex: none;
@@ -1695,9 +1714,10 @@ textarea.board-text-input {
     height: 30px;
   }
 
+  /* 手指點得到：至少 30px（色點本身一樣大，外圈是可以點的範圍） */
   .board-swatch {
-    width: 22px;
-    height: 22px;
+    width: 30px;
+    height: 30px;
   }
 
   .board-colors {
@@ -1786,6 +1806,30 @@ textarea.board-text-input {
 
   .board-selbar > * {
     flex: none;
+  }
+
+  /* 「從文字建立」打開時不左右滑：輸入框、套用、取消換行排好，取消才不會被切掉 */
+  .board-selbar:has(> .board-text-form) {
+    flex-wrap: wrap;
+    mask-image: none;
+  }
+
+  .board-selbar > .board-text-form {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .board-text-form .input {
+    flex: 1 1 160px;
+    min-width: 0;
+  }
+}
+
+/* 觸控螢幕：格子的顏色也要手指點得到 */
+@media (pointer: coarse) {
+  .board-cell-swatch {
+    width: 30px;
+    height: 30px;
   }
 }
 
@@ -1923,6 +1967,15 @@ button.board-link {
 }
 
 /* 用文字建立 */
+/* 清空白板的對話框：步驟要不要一起刪 */
+.board-clear-steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 14px;
+}
+
 .board-text-form {
   display: flex;
   flex-wrap: wrap;

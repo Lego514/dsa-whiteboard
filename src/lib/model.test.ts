@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { fitsSizeLimit } from '../constants';
 import { boardDocSchema } from '../schema';
+import { boardToSvg, estimateWidth } from './exportSvg';
 import {
   addElement,
   addPointerAt,
   appendPoint,
   arrowPoints,
   CELL,
+  findElement,
+  graphLayout,
+  hasColor,
+  WIDE_CELL,
   checkpoint,
   commit,
   contentBounds,
@@ -323,6 +328,66 @@ describe('arrows and ink', () => {
     const inked = addElement(doc, { type: 'stroke', id: 's', color: 'red', points: [-50, 300, 10, 310] });
     expect(contentBounds(inked)).toEqual({ x: -50, y: 0, w: 326, h: 310 });
     expect(contentBounds(EMPTY_DOC)).toBeNull();
+  });
+});
+
+describe('small fixes from the first-time user test', () => {
+  const svgOptions = { measure: estimateWidth, front: 'front', back: 'back' };
+
+  it('colors text, sticky notes, and headings, but not code, and drops the color when set back to ink', () => {
+    const note = createElement('text', { x: 0, y: 0 }, 'n', texts);
+    const code = createElement('code', { x: 0, y: 200 }, 'c', texts);
+    let doc: BoardDoc = { elements: [note, code] };
+    expect(hasColor(note)).toBe(true);
+    expect(hasColor(code)).toBe(false);
+    doc = recolorElements(doc, new Set(['n', 'c']), 'red');
+    expect(findElement(doc, 'n')).toMatchObject({ color: 'red' });
+    expect(findElement(doc, 'c')).not.toHaveProperty('color');
+    expect(boardDocSchema.safeParse(doc).success).toBe(true);
+    expect(boardToSvg(doc, undefined, svgOptions)!.svg).toContain('fill="#c62828"');
+    doc = recolorElements(doc, new Set(['n']), 'ink');
+    expect((findElement(doc, 'n') as ElementOf<'text'>).color).toBeUndefined();
+  });
+
+  it('picks a pencil stroke by clicking on it, the topmost one first', () => {
+    const doc: BoardDoc = {
+      elements: [
+        { type: 'stroke', id: 's1', color: 'ink', points: [0, 0, 100, 0] },
+        { type: 'stroke', id: 's2', color: 'red', points: [50, -50, 50, 50] },
+      ],
+    };
+    expect(hitConnector(doc, { x: 20, y: 3 }, 8)).toBe('s1');
+    expect(hitConnector(doc, { x: 50, y: 0 }, 8)).toBe('s2');
+    expect(hitConnector(doc, { x: 20, y: 30 }, 8)).toBeUndefined();
+  });
+
+  it('clears recorded steps with the canvas only when asked', () => {
+    const doc: BoardDoc = { elements: [createElement('array', { x: 0, y: 0 }, 'a', texts)], steps: [{ id: 's1', caption: '', elements: [] }] };
+    expect(clearElements(doc)).toEqual({ elements: [], steps: doc.steps });
+    expect(clearElements(doc, true).steps).toBeUndefined();
+    expect(clearElements(doc, true).elements).toEqual([]);
+  });
+
+  it('draws the default graph with no edges crossing in the middle', () => {
+    const graph = createElement('graph', { x: 0, y: 0 }, 'g', texts) as ElementOf<'graph'>;
+    const { centers } = graphLayout(graph);
+    const cross = (p: { x: number; y: number }, q: { x: number; y: number }, r: { x: number; y: number }, s: { x: number; y: number }) => {
+      const side = (a: typeof p, b: typeof p, c: typeof p) => Math.sign((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
+      return side(p, q, r) * side(p, q, s) < 0 && side(r, s, p) * side(r, s, q) < 0;
+    };
+    for (const [i, e] of graph.edges.entries()) {
+      for (const f of graph.edges.slice(i + 1)) {
+        expect(cross(centers[e.a], centers[e.b], centers[f.a], centers[f.b]), `${e.a}-${e.b} × ${f.a}-${f.b}`).toBe(false);
+      }
+    }
+  });
+
+  it('labels a dict’s two columns key and value', () => {
+    const dict = createElement('dict', { x: 0, y: 0 }, 'd', texts) as ElementOf<'table'>;
+    expect(sizeOf(dict)).toEqual({ w: 2 * WIDE_CELL, h: LABEL_H + INDEX_H + 2 * CELL });
+    const svg = boardToSvg({ elements: [dict] }, undefined, { ...svgOptions, dictHead: ['key', 'value'] })!.svg;
+    expect(svg).toContain('>key</text>');
+    expect(svg).toContain('>value</text>');
   });
 });
 

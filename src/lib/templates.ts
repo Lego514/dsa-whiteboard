@@ -153,14 +153,14 @@ function groupBounds(els: BoardElement[]): Rect {
 }
 
 /** 把模板整組放在 center 附近的空位，回傳新文件和新元件的 id（方便整組選取） */
-export function insertTemplate(doc: BoardDoc, kind: TemplateKind, center: Point, sizes?: Sizes): { doc: BoardDoc; ids: string[] } {
-  return placeGroup(doc, templateElements(kind, idMaker(doc)), center, sizes);
+export function insertTemplate(doc: BoardDoc, kind: TemplateKind, center: Point, sizes?: Sizes, visible?: Rect): { doc: BoardDoc; ids: string[] } {
+  return placeGroup(doc, templateElements(kind, idMaker(doc)), center, sizes, visible);
 }
 
-/** 一組元件（位置相對於彼此）整組搬到 center 附近的空位，加進白板 */
-export function placeGroup(doc: BoardDoc, els: BoardElement[], center: Point, sizes?: Sizes): { doc: BoardDoc; ids: string[] } {
+/** 一組元件（位置相對於彼此）整組搬到 center 附近的空位（有給 visible 就先找畫面裡的），加進白板 */
+export function placeGroup(doc: BoardDoc, els: BoardElement[], center: Point, sizes?: Sizes, visible?: Rect): { doc: BoardDoc; ids: string[] } {
   const bounds = groupBounds(els);
-  const spot = freeSpot(doc, bounds.w, bounds.h, center, sizes);
+  const spot = freeSpot(doc, bounds.w, bounds.h, center, sizes, visible);
   const dx = spot.x - bounds.x;
   const dy = spot.y - bounds.y;
   // 吸附的指標和範圍框跟著元件走，不用另外移

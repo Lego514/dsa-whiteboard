@@ -1047,6 +1047,8 @@ textarea.board-text-input {
   width: min(400px, calc(100% - 32px));
   max-height: calc(100% - 32px);
   overflow-y: auto;
+  /* 捲到底不要接著捲後面的頁面 */
+  overscroll-behavior: contain;
   padding: 14px 16px 16px;
   border: 1px solid var(--rule);
   border-radius: var(--radius);
@@ -1374,6 +1376,15 @@ textarea.board-text-input {
   padding: 0 4px;
   font-size: 14px;
   font-weight: 700;
+  white-space: nowrap;
+}
+
+/* 選取列上的一句操作提示，比按鈕安靜 */
+.board-selbar-hint {
+  align-self: center;
+  padding: 0 4px;
+  color: var(--ink-2);
+  font-size: 13px;
   white-space: nowrap;
 }
 
@@ -1758,6 +1769,19 @@ textarea.board-text-input {
 
   .board-selbar::-webkit-scrollbar {
     display: none;
+  }
+
+  /* 捲軸藏起來了，還有按鈕的那一邊淡出，看得出還能滑（watchOverflow 標的 data-more） */
+  .board-selbar[data-more='end'] {
+    mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+  }
+
+  .board-selbar[data-more='start'] {
+    mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent);
+  }
+
+  .board-selbar[data-more='start end'] {
+    mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent);
   }
 
   .board-selbar > * {

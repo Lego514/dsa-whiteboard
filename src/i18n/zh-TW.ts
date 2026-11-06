@@ -284,6 +284,7 @@ export const zhTW = {
     },
     linkStates: { next: '往後', prev: '反過來', none: '斷開' },
     linkLabel: (from: number, state: string) => `第 ${from} 和第 ${from + 1} 個節點之間：${state}。點一下切換`,
+    linkHint: '點箭頭反轉，再點一次剪斷',
     nodeLabel: (value: string) => `節點 ${value}`,
     graphNodeLabel: (index: number) => `第 ${index} 個節點`,
     heap: {

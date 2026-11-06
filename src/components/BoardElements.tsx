@@ -75,6 +75,8 @@ interface ElementViewProps {
   cellIndex?: number;
   /** 進入編輯時游標放在哪一格 */
   focusIndex?: number;
+  /** 剛加進來的文字：開始編輯時把預設的字全選，一打字就換掉 */
+  selectAll?: boolean;
   /** 選取時才有：陣列最後的「＋」格、表格的「＋列」「＋欄」 */
   onAddCell?: () => void;
   /** 選取鏈結串列時，點兩個節點之間的箭頭切換方向 */
@@ -153,8 +155,11 @@ function Body({ el, editing, onChange, onDoneEditing, ...rest }: BodyProps) {
     case 'shape':
       return null;
     case 'text':
-      if (el.variant === 'code') return <CodeBody el={el} editing={editing} focusIndex={rest.focusIndex} onChange={onChange} onDoneEditing={onDoneEditing} />;
-      return <TextBody el={el} editing={editing} onChange={onChange} onDoneEditing={onDoneEditing} />;
+      if (el.variant === 'code')
+        return (
+          <CodeBody el={el} editing={editing} focusIndex={rest.focusIndex} selectAll={rest.selectAll} onChange={onChange} onDoneEditing={onDoneEditing} />
+        );
+      return <TextBody el={el} editing={editing} selectAll={rest.selectAll} onChange={onChange} onDoneEditing={onDoneEditing} />;
     case 'list':
       if (el.variant === 'linked') return <LinkedBody el={el} editing={editing} onChange={onChange} onDoneEditing={onDoneEditing} {...rest} />;
       if (el.variant === 'heap') return <HeapBody el={el} editing={editing} onChange={onChange} onDoneEditing={onDoneEditing} {...rest} />;
@@ -275,9 +280,15 @@ function Label({ value, editing, onChange, onDone }: { value: string; editing: b
   );
 }
 
-function TextBody({ el, editing, onChange, onDoneEditing }: { el: ElementOf<'text'> } & Omit<BodyProps, 'el' | 'snapIndex'>) {
+function TextBody({ el, editing, selectAll, onChange, onDoneEditing }: { el: ElementOf<'text'> } & Omit<BodyProps, 'el' | 'snapIndex'>) {
   const { t } = useI18n();
   const ref = useRef<HTMLTextAreaElement>(null);
+  // 剛加進來的：預設的字全選，直接打字就換掉
+  useLayoutEffect(() => {
+    if (editing && selectAll) ref.current?.select();
+    // 只在開始編輯時選一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing]);
   // 編輯時高度跟著內容長
   useEffect(() => {
     const area = ref.current;
@@ -310,9 +321,10 @@ function CodeBody({
   el,
   editing,
   focusIndex,
+  selectAll,
   onChange,
   onDoneEditing,
-}: { el: ElementOf<'text'>; editing: boolean; focusIndex?: number } & Pick<BodyProps, 'onChange' | 'onDoneEditing'>) {
+}: { el: ElementOf<'text'>; editing: boolean; focusIndex?: number; selectAll?: boolean } & Pick<BodyProps, 'onChange' | 'onDoneEditing'>) {
   const { t } = useI18n();
   const ref = useRef<HTMLTextAreaElement>(null);
   const lines = el.text.split('\n');
@@ -321,6 +333,11 @@ function CodeBody({
   useLayoutEffect(() => {
     const area = ref.current;
     if (!editing || !area) return;
+    // 剛加進來的程式碼框：整個範本全選，直接貼上自己的程式碼就換掉
+    if (selectAll) {
+      area.select();
+      return;
+    }
     const row = Math.min(focusIndex ?? lines.length - 1, lines.length - 1);
     const at = lines.slice(0, row + 1).join('\n').length;
     area.setSelectionRange(at, at);
@@ -491,7 +508,15 @@ function LinkArrow({ state, label, onToggle }: { state: Link; label: string; onT
     );
   }
   return (
-    <button type="button" className="board-link" data-state={state} aria-label={label} title={label} onClick={onToggle}>
+    <button
+      type="button"
+      className="board-link"
+      data-state={state}
+      aria-label={label}
+      title={label}
+      // 連點兩下只算一下：不然想反轉的人雙擊，會反轉又剪斷
+      onClick={(e) => e.detail <= 1 && onToggle()}
+    >
       {icon}
     </button>
   );

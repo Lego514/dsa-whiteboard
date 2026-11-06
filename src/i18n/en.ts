@@ -285,6 +285,7 @@ export const en: Messages = {
     },
     linkStates: { next: 'forward', prev: 'reversed', none: 'cut' },
     linkLabel: (from, state) => `Link between node ${from} and ${from + 1}: ${state}. Click to change`,
+    linkHint: 'Click an arrow to reverse it, again to cut it',
     nodeLabel: (value) => `Node ${value}`,
     graphNodeLabel: (index) => `Node ${index}`,
     heap: {

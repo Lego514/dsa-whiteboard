@@ -68,7 +68,7 @@ test('keeps the view where it is after adding something', async ({ page }) => {
   await page.goto('./');
   const canvas = page.getByRole('region', { name: 'Whiteboard canvas' });
   const world = canvas.locator('.board-world');
-  await page.getByRole('button', { name: 'Text', exact: true }).click();
+  await page.getByRole('button', { name: 'Array', exact: true }).click();
   await expect(page.getByText('Saved on this device')).toBeVisible();
 
   // 用手掌工具平移畫面，再放一個元件；存檔之後畫面不應該跳回中間
@@ -114,6 +114,96 @@ test('keeps the element being edited on top of whatever overlaps it', async ({ p
     [box.x + box.width / 2, box.y + box.height / 2],
   );
   expect(onTop).toMatch(/^Variable/);
+});
+
+/** 兩個方框有沒有重疊 */
+function overlap(a: { x: number; y: number; width: number; height: number }, b: { x: number; y: number; width: number; height: number }) {
+  return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+}
+
+test('puts a template where you can see it, clear of the toolbars, even on a crowded board', async ({ page }) => {
+  await page.goto('./');
+  // 中間先擺滿東西，新加的模板只能放到旁邊
+  for (const name of ['Array', 'Dict', 'Stack', 'Binary tree', 'Queue', 'Variable', 'Set', 'Linked list', 'Heap']) {
+    await page.getByRole('button', { name, exact: true }).click();
+  }
+  await page.getByRole('region', { name: 'Templates' }).getByRole('button', { name: /^Sliding window/ }).click();
+  const selbar = page.getByRole('toolbar', { name: 'Selected element' });
+  await expect(selbar).toContainText(/\d selected/);
+
+  const canvas = (await page.getByRole('region', { name: 'Whiteboard canvas' }).boundingBox())!;
+  const bars = await Promise.all(
+    [selbar, page.getByRole('toolbar', { name: 'Tools' }), page.getByRole('group', { name: 'Steps', exact: true })].map(async (bar) => (await bar.boundingBox())!),
+  );
+  const added = page.locator('.board-el[data-selected]');
+  expect(await added.count()).toBeGreaterThan(2);
+  for (const el of await added.all()) {
+    const box = (await el.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(canvas.x);
+    expect(box.y).toBeGreaterThanOrEqual(canvas.y);
+    expect(box.x + box.width).toBeLessThanOrEqual(canvas.x + canvas.width);
+    expect(box.y + box.height).toBeLessThanOrEqual(canvas.y + canvas.height);
+    for (const bar of bars) expect(overlap(box, bar), (await el.getAttribute('aria-label')) ?? '').toBe(false);
+  }
+});
+
+test('types right away into a new text box, sticky note, or code box, replacing the placeholder', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Text', exact: true }).click();
+  await page.keyboard.type('O(n) time, O(n) space');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('group', { name: 'Text: O(n) time, O(n) space' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Sticky note', exact: true }).click();
+  await page.keyboard.type('check empty input');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('group', { name: /^Sticky note: check empty input$/ })).toBeVisible();
+
+  // 程式碼框整個範本全選，直接貼上自己的程式碼
+  await page.getByRole('button', { name: 'Code', exact: true }).click();
+  await page.keyboard.type('seen = {}');
+  await page.keyboard.press('Escape');
+  const code = page.getByRole('group', { name: /^Code/ });
+  await expect(code).toContainText('seen = {}');
+  await expect(code).not.toContainText('class Solution');
+});
+
+test('scrolls the help with the mouse wheel instead of the board behind it', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'mouse wheel');
+  await page.setViewportSize({ width: 1280, height: 500 });
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Array', exact: true }).click();
+  const world = page.locator('.board-world');
+  const before = await world.getAttribute('style');
+  await page.getByRole('button', { name: 'How to use' }).click();
+  const help = page.locator('.board-help');
+  const box = (await help.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(0, 400);
+  await expect.poll(() => help.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+  expect(await world.getAttribute('style')).toBe(before);
+});
+
+test('shows there are more buttons when the selection toolbar scrolls sideways on a phone', async ({ page, isMobile }) => {
+  if (!isMobile) await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Array', exact: true }).click();
+  await page.getByRole('group', { name: /^Array nums/ }).getByTitle('3', { exact: true }).click();
+  const selbar = page.getByRole('toolbar', { name: 'Selected element' });
+  await expect(selbar).toContainText('Cell 2');
+  await expect(selbar).toHaveAttribute('data-more', 'end');
+  await selbar.evaluate((node) => node.scrollBy({ left: 10_000 }));
+  await expect(selbar).toHaveAttribute('data-more', 'start');
+  if (isMobile) return;
+  // 滾輪在選取列上是左右捲它，白板不動
+  const world = page.locator('.board-world');
+  const before = await world.getAttribute('style');
+  await selbar.evaluate((node) => node.scrollTo({ left: 0 }));
+  const box = (await selbar.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(0, 200);
+  await expect.poll(() => selbar.evaluate((node) => node.scrollLeft)).toBeGreaterThan(0);
+  expect(await world.getAttribute('style')).toBe(before);
 });
 
 test('clears the canvas after confirming, and undo brings it back', async ({ page }) => {
@@ -363,11 +453,17 @@ test('builds a linked list from text, flips a link, and points the tail back', a
   await expect(list).toHaveAccessibleName('Linked list head: 1 → 2 → 3 → 4 → 5');
   await expect(list).toContainText('null');
 
+  // 選取列上直接說箭頭可以點（不然很難發現）
+  await expect(selbar).toContainText('Click an arrow to reverse it, again to cut it');
+
   // 點兩個節點之間的箭頭：往後 → 反過來 → 斷開
   await list.getByRole('button', { name: /^Link between node 0 and 1: forward/ }).click();
   await expect(list.getByRole('button', { name: /^Link between node 0 and 1: reversed/ })).toBeVisible();
   await list.getByRole('button', { name: /^Link between node 0 and 1: reversed/ }).click();
   await expect(list.getByRole('button', { name: /^Link between node 0 and 1: cut/ })).toBeVisible();
+  // 雙擊只算一下：想反轉的人雙擊，不會反轉又剪斷
+  await list.getByRole('button', { name: /^Link between node 1 and 2: forward/ }).dblclick();
+  await expect(list.getByRole('button', { name: /^Link between node 1 and 2: reversed/ })).toBeVisible();
 
   // 選著串列時加指標，指標吸附在第一個節點下面，方向鍵一格一格走
   await page.getByRole('button', { name: 'Pointer', exact: true }).click();

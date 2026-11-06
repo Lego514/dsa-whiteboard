@@ -1,4 +1,4 @@
-import { CELL, MAX_CELLS, sizeOf, type BoardDoc, type BoardElement, type Placed, type Point, type Sizes } from './model';
+import { CELL, MAX_CELLS, sizeOf, type BoardDoc, type BoardElement, type Placed, type Point, type Rect, type Sizes } from './model';
 import { parseGraph, parseIntervals, parseTree, readValue, type ParseError } from './structures';
 import { idMaker, placeGroup } from './templates';
 
@@ -123,7 +123,13 @@ const GAP = 40;
  * 把一段範例畫成一組元件：資料結構由上往下排，變數排在右邊一欄；整組放在 center 附近的空位。
  * 圖用到的節點數（n、numCourses）和區間的 newInterval 併進那個元件，不另外畫變數
  */
-export function insertExample(doc: BoardDoc, input: string, center: Point, sizes?: Sizes): { doc: BoardDoc; ids: string[] } | { error: ParseError } {
+export function insertExample(
+  doc: BoardDoc,
+  input: string,
+  center: Point,
+  sizes?: Sizes,
+  visible?: Rect,
+): { doc: BoardDoc; ids: string[] } | { error: ParseError } {
   const args = splitExample(input);
   if (args.length === 0) return { error: 'empty' };
   const nextId = idMaker(doc);
@@ -157,5 +163,5 @@ export function insertExample(doc: BoardDoc, input: string, center: Point, sizes
     el.y = vy;
     vy += sizeOf(el).h + 12;
   }
-  return placeGroup(doc, [...structures, ...vars], center, sizes);
+  return placeGroup(doc, [...structures, ...vars], center, sizes, visible);
 }

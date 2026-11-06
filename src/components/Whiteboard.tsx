@@ -44,6 +44,15 @@ interface View {
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 3;
+
+/**
+ * 點一下加進來的元件先放在這個範圍裡（螢幕像素，從畫面四邊往內扣）：上面是逐步播放和桌機的選取列，
+ * 下面是工具列和手機的選取列。只是先挑位置，放好之後真的被擋到會再挪畫面（revealInside）
+ */
+const OPEN_INSET = { top: 72, bottom: 120, side: 16 };
+
+/** 浮在畫布上、會擋住元件的列；剛加進來的東西要讓開它們 */
+const OVERLAYS = '.board-steps-widget, .board-selbar, .board-tools, .board-zoom';
 const TOOLS: Tool[] = ['select', 'hand', 'arrow', 'line', 'rect', 'ellipse', 'pen', 'eraser'];
 const TOOL_KEYS: Record<string, Tool> = { v: 'select', h: 'hand', a: 'arrow', l: 'line', r: 'rect', o: 'ellipse', p: 'pen', e: 'eraser' };
 
@@ -170,6 +179,8 @@ function Editor<R>({
   const [editingId, setEditingId] = useState<string | null>(null);
   /** 進入編輯時游標放在哪一格 */
   const [editFocus, setEditFocus] = useState<number | undefined>(undefined);
+  /** 剛加進來的文字：直接開始編輯，預設的字全選，一打字就換掉 */
+  const [freshText, setFreshText] = useState<string | null>(null);
   /** 選取的陣列格子；選了一格時，操作列換成這一格的操作 */
   const [cellSel, setCellSel] = useState<{ id: string; index: number } | null>(null);
   /** 圖選了一條邊 */
@@ -311,9 +322,13 @@ function Editor<R>({
     const r = viewportRect();
     return { x: (clientX - r.left - view.x) / view.zoom, y: (clientY - r.top - view.y) / view.zoom };
   };
-  const centerWorld = (): m.Point => {
+  /** 新元件要放的地方：畫面上沒被上下兩排擋住的範圍（世界座標）和它的中心 */
+  const openArea = (): { center: m.Point; visible: m.Rect } => {
     const r = viewportRect();
-    return toWorld(r.left + r.width / 2, r.top + r.height / 2);
+    const a = toWorld(r.left + OPEN_INSET.side, r.top + OPEN_INSET.top);
+    const b = toWorld(r.right - OPEN_INSET.side, r.bottom - OPEN_INSET.bottom);
+    const visible = { x: a.x, y: a.y, w: Math.max(0, b.x - a.x), h: Math.max(0, b.y - a.y) };
+    return { center: { x: visible.x + visible.w / 2, y: visible.y + visible.h / 2 }, visible };
   };
 
   const zoomAt = useCallback((factor: number, sx: number, sy: number) => {
@@ -356,11 +371,20 @@ function Editor<R>({
     const node = viewportRef.current;
     if (!node) return;
     const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
       // 換成像素：滑鼠滾輪一格大約 100，Firefox 有時以「行」為單位
       const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? node.clientHeight : 1;
       const dx = e.deltaX * unit;
       const dy = e.deltaY * unit;
+      // 浮在畫布上的面板（說明、選取列、工具列）上捲的是面板自己，不是後面的白板
+      const panel = e.target instanceof Element ? e.target.closest<HTMLElement>('[data-ui]') : null;
+      if (panel) {
+        if (!(e.ctrlKey || e.metaKey) && panel.scrollHeight > panel.clientHeight) return;
+        e.preventDefault();
+        // 手機的選取列只能左右捲：滾輪往下就往右
+        if (!(e.ctrlKey || e.metaKey) && panel.scrollWidth > panel.clientWidth) panel.scrollLeft += dx || dy;
+        return;
+      }
+      e.preventDefault();
       if (e.ctrlKey || e.metaKey) {
         // 每次最多縮放約 12%：滑鼠一格不會一下跳太多，觸控板捏合也一樣平順
         const r = node.getBoundingClientRect();
@@ -418,6 +442,7 @@ function Editor<R>({
     setSelection(new Set([id]));
   };
   const stopEditing = () => {
+    setFreshText(null);
     if (!editingId) return;
     setHistory((h) => m.dropEmptyCheckpoint(h));
     setEditingId(null);
@@ -430,8 +455,9 @@ function Editor<R>({
     const id = m.newId(doc);
     const fresh = m.createElement(kind, { x: 0, y: 0 }, id, t.board.defaults);
     if (fresh.type === 'pointer') fresh.name = m.nextPointerName(doc);
-    // 拖進來的放在放開的位置；點一下的放在畫面中間附近的空位
-    let el = at ? { ...fresh, ...centered(fresh, at) } : m.placeAtCenter(doc, fresh, centerWorld(), sizes);
+    // 拖進來的放在放開的位置；點一下的放在畫面中間附近、看得到的空位
+    const area = openArea();
+    let el = at ? { ...fresh, ...centered(fresh, at) } : m.placeAtCenter(doc, fresh, area.center, sizes, area.visible);
     // 先選了陣列、串列或樹再加指標，指標直接放在第一格（樹是根節點）；要放在別格，先點那格再按「＋指標」
     if (el.type === 'pointer' && !at && m.holdsPointers(single)) el = { ...el, attach: { id: single.id, index: 0 } };
     let next = m.addElement(doc, el);
@@ -439,6 +465,12 @@ function Editor<R>({
     apply(next);
     setSelection(new Set([id]));
     setTool('select');
+    if (!at) revealAdded.current = [id];
+    // 文字、標題、便利貼、程式碼：加進來就能直接打字（不然打的字會不見）
+    if (el.type === 'text') {
+      startEditing(id);
+      setFreshText(id);
+    }
   };
 
   /** 幫兩個指標加範圍框，選取新的框（可以直接換色） */
@@ -452,20 +484,24 @@ function Editor<R>({
   const addTemplate = (kind: TemplateKind) => {
     stopEditing();
     setCellSel(null);
-    const { doc: next, ids } = insertTemplate(doc, kind, centerWorld(), sizes);
+    const area = openArea();
+    const { doc: next, ids } = insertTemplate(doc, kind, area.center, sizes, area.visible);
     apply(next);
     setSelection(new Set(ids));
     setTool('select');
+    revealAdded.current = ids;
   };
 
   /** 貼上整段範例：畫成一組元件放在畫面中間附近，全部選取；看不懂時回傳原因 */
   const drawExample = (text: string): string | null => {
-    const result = insertExample(doc, text, centerWorld(), sizes);
+    const area = openArea();
+    const result = insertExample(doc, text, area.center, sizes, area.visible);
     if ('error' in result) return t.board.structureText.errors[result.error];
     stopEditing();
     setCellSel(null);
     apply(result.doc);
     setSelection(new Set(result.ids));
+    revealAdded.current = result.ids;
     setTool('select');
     setPasting(false);
     return null;
@@ -715,9 +751,32 @@ function Editor<R>({
   /** 選取時手指或滑鼠還按著（可能接著拖），等放開再挪 */
   const revealLater = useRef(false);
 
+  /** 點一下加進來的元件：選取列畫出來之後，整組要看得到、不被浮在畫布上的列擋住 */
+  const revealAdded = useRef<string[] | null>(null);
+
+  const boxOf = (node: Element): m.Rect => {
+    const r = node.getBoundingClientRect();
+    return { x: r.left, y: r.top, w: r.width, h: r.height };
+  };
+
+  /** 把剛加進來的那一組挪進畫面，讓開上下的列 */
+  const revealGroup = (viewport: HTMLElement, ids: readonly string[]) => {
+    const boxes = ids.flatMap((id) => [...viewport.querySelectorAll(`[data-el="${id}"]`)]).map(boxOf);
+    if (boxes.length === 0) return;
+    const overlays = [...viewport.querySelectorAll(OVERLAYS)].map(boxOf);
+    const shift = m.revealInside(boxes.reduce(m.unionRect), boxOf(viewport), overlays);
+    if (shift.x !== 0 || shift.y !== 0) setView((v) => ({ ...v, x: v.x + shift.x, y: v.y + shift.y }));
+  };
+
   /** 選到的東西（或選到的那一格、那條邊）被選取列擋住時，把畫面上下挪開 */
   const revealSelection = () => {
     const viewport = viewportRef.current;
+    const added = revealAdded.current;
+    revealAdded.current = null;
+    if (viewport && added) {
+      revealGroup(viewport, added);
+      return;
+    }
     const bar = viewport?.querySelector<HTMLElement>('.board-selbar');
     if (!viewport || !bar || selected.size !== 1) return;
     const id = [...selected][0];
@@ -735,10 +794,7 @@ function Editor<R>({
           : edgeSel?.id === id
             ? host.querySelector(`[data-edge="${edgeSel.index}"]`)
             : null;
-    const box = (node: Element): m.Rect => {
-      const r = node.getBoundingClientRect();
-      return { x: r.left, y: r.top, w: r.width, h: r.height };
-    };
+    const box = boxOf;
     // 二元樹選了一個節點：連它的子節點和加子節點的「+」一起露出來，才點得到下一層
     const below =
       el?.type === 'tree' && cellSel?.id === id
@@ -1465,6 +1521,7 @@ function Editor<R>({
                 onAddNode={canAdd(el) && el.type === 'graph' ? () => addGraphNodeTo(el) : undefined}
                 onPickEdge={canAdd(el) && el.type === 'graph' ? (index) => pickEdge(el, index) : undefined}
                 focusIndex={editingId === el.id ? editFocus : undefined}
+                selectAll={editingId === el.id && freshText === el.id}
                 onAddCell={
                   canAdd(el) && el.type === 'list' && !isBits(el)
                     ? () => insertCellAt(el, el.items.length)
@@ -1628,7 +1685,7 @@ function Editor<R>({
                 onExplain={explain ? startExplain : undefined}
               />
               {tool === 'select' && selected.size > 0 && (
-                <div className="board-selbar" role="toolbar" aria-label={t.board.selectionLabel} data-ui>
+                <div ref={watchOverflow} className="board-selbar" role="toolbar" aria-label={t.board.selectionLabel} data-ui>
                   {pickedGraph && graphEdge !== undefined ? (
                     <EdgeActions
                       key={`${pickedGraph.id}:${graphEdge}`}
@@ -1692,6 +1749,11 @@ function Editor<R>({
                   ) : (
                     <>
                       {selected.size > 1 && <span className="board-selbar-title">{t.board.selectedCount(selected.size)}</span>}
+                      {/* 串列的箭頭要選取後才點得動，不說的話很難發現（反轉串列就靠它） */}
+                      {[...selected].some((id) => {
+                        const el = m.findElement(doc, id);
+                        return el !== undefined && m.isLinked(el) && el.items.length > 1;
+                      }) && <span className="board-selbar-hint">{t.board.linkHint}</span>}
                       {pair && (
                         <button type="button" className="btn btn-small" onClick={() => frameBetween(pair)}>
                           {t.board.actions.frameBetween}
@@ -2543,6 +2605,30 @@ function recursionDirection(key: string): m.RecursionDirection {
 }
 
 /** 用 canvas 量文字寬度，匯出時換行和截斷才跟畫面一致 */
+/**
+ * 手機上選取列一行放不下時可以左右滑，但捲軸藏起來了：兩邊還有東西就標上 data-more，CSS 在那一邊淡出，看得出還能滑。
+ * 當 callback ref 用；捲動、大小或內容改變時重算
+ */
+function watchOverflow(node: HTMLElement | null): (() => void) | undefined {
+  if (!node) return;
+  const update = () => {
+    const more = [node.scrollLeft > 1 && 'start', node.scrollLeft + node.clientWidth < node.scrollWidth - 1 && 'end'].filter(Boolean).join(' ');
+    if (more) node.dataset.more = more;
+    else delete node.dataset.more;
+  };
+  update();
+  node.addEventListener('scroll', update, { passive: true });
+  const resize = new ResizeObserver(update);
+  resize.observe(node);
+  const content = new MutationObserver(update);
+  content.observe(node, { childList: true, subtree: true, characterData: true });
+  return () => {
+    node.removeEventListener('scroll', update);
+    resize.disconnect();
+    content.disconnect();
+  };
+}
+
 function canvasMeasure(): Measure {
   const context = document.createElement('canvas').getContext('2d');
   return (value, font) => {

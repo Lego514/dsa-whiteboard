@@ -471,25 +471,41 @@ function overlaps(a: Rect, b: Rect, margin: number): boolean {
  * 放在 center 附近：中間有東西時，一圈一圈往外找第一個空位，免得蓋住原本的元件。
  * 找不到就放在正中間。
  */
-export function placeAtCenter(doc: BoardDoc, el: Placed, center: Point, sizes?: Sizes): Placed {
+export function placeAtCenter(doc: BoardDoc, el: Placed, center: Point, sizes?: Sizes, visible?: Rect): Placed {
   const { w, h } = sizeOf(el);
-  return { ...el, ...freeSpot(doc, w, h, center, sizes) };
+  return { ...el, ...freeSpot(doc, w, h, center, sizes, visible) };
 }
 
-/** w × h 的東西放在 center 附近、不會蓋到別人的左上角；一圈一圈往外找，找不到就放正中間 */
-export function freeSpot(doc: BoardDoc, w: number, h: number, center: Point, sizes?: Sizes): Point {
-  const taken = doc.elements.filter(isPlaced).map((other) => rectOf(doc, other, sizes));
-  const step = 32;
-  for (let ring = 0; ring <= 12; ring += 1) {
-    for (let dy = -ring; dy <= ring; dy += 1) {
-      for (let dx = -ring; dx <= ring; dx += 1) {
-        if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
-        const spot = { x: Math.round(center.x - w / 2 + dx * step), y: Math.round(center.y - h / 2 + dy * step), w, h };
-        if (!taken.some((r) => overlaps(spot, r, 12))) return { x: spot.x, y: spot.y };
-      }
-    }
+const SPOT_STEP = 32;
+const SPOT_RINGS = 12;
+
+/**
+ * 找空位時試的位移（以格為單位），近的先試。一樣近時左右先於上下、下面先於上面：
+ * 桌機的選取列在畫面上方，新東西往上放容易被擋住
+ */
+const SPOT_OFFSETS: readonly Point[] = (() => {
+  const offsets: Point[] = [];
+  for (let dy = -SPOT_RINGS; dy <= SPOT_RINGS; dy += 1) {
+    for (let dx = -SPOT_RINGS; dx <= SPOT_RINGS; dx += 1) offsets.push({ x: dx, y: dy });
   }
-  return { x: Math.round(center.x - w / 2), y: Math.round(center.y - h / 2) };
+  return offsets.sort((a, b) => a.x * a.x + a.y * a.y - (b.x * b.x + b.y * b.y) || Math.abs(a.y) - Math.abs(b.y) || b.y - a.y || a.x - b.x);
+})();
+
+function contains(outer: Rect, inner: Rect): boolean {
+  return inner.x >= outer.x && inner.y >= outer.y && inner.x + inner.w <= outer.x + outer.w && inner.y + inner.h <= outer.y + outer.h;
+}
+
+/**
+ * w × h 的東西放在 center 附近、不會蓋到別人的左上角，近的位置先試，都被占了就放正中間。
+ * 給了 visible（現在畫面上看得到的範圍）就先在畫面裡找：畫面裡塞滿了才往畫面外放，
+ * 不然新加的東西會跑到畫面外，看起來像什麼都沒發生
+ */
+export function freeSpot(doc: BoardDoc, w: number, h: number, center: Point, sizes?: Sizes, visible?: Rect): Point {
+  const taken = doc.elements.filter(isPlaced).map((other) => rectOf(doc, other, sizes));
+  const spots = SPOT_OFFSETS.map((d) => ({ x: Math.round(center.x - w / 2 + d.x * SPOT_STEP), y: Math.round(center.y - h / 2 + d.y * SPOT_STEP), w, h }));
+  const free = (spot: Rect) => !taken.some((r) => overlaps(spot, r, 12));
+  const spot = (visible && spots.find((s) => contains(visible, s) && free(s))) || spots.find(free);
+  return spot ? { x: spot.x, y: spot.y } : { x: Math.round(center.x - w / 2), y: Math.round(center.y - h / 2) };
 }
 
 /**
@@ -2222,6 +2238,26 @@ export function revealShiftX(target: Rect, viewport: Rect, margin = 12): number 
   if (target.x >= left && target.x + target.w <= right) return 0;
   if (target.w > right - left || target.x < left) return left - target.x;
   return right - (target.x + target.w);
+}
+
+/**
+ * 剛加進來的東西要整個看得到：先左右挪進畫面，再上下挪到浮在畫布上的列（逐步播放、選取列、工具列、縮放）之間。
+ * 只算左右跟它重疊的列；在畫面上半的列擋上面，下半的擋下面。比空間還大時對齊左邊、上面
+ */
+export function revealInside(target: Rect, viewport: Rect, overlays: readonly Rect[], margin = 12): Point {
+  const dx = revealShiftX(target, viewport, margin);
+  const x = target.x + dx;
+  const middle = viewport.y + viewport.h / 2;
+  let top = viewport.y + margin;
+  let bottom = viewport.y + viewport.h - margin;
+  for (const o of overlays) {
+    if (o.x >= x + target.w || x >= o.x + o.w) continue;
+    if (o.y + o.h / 2 < middle) top = Math.max(top, o.y + o.h + margin);
+    else bottom = Math.min(bottom, o.y - margin);
+  }
+  if (target.y >= top && target.y + target.h <= bottom) return { x: dx, y: 0 };
+  if (target.h > bottom - top || target.y < top) return { x: dx, y: top - target.y };
+  return { x: dx, y: bottom - (target.y + target.h) };
 }
 
 export function revealShift(target: Rect, bar: Rect, viewport: Rect, margin = 12): number {

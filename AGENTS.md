@@ -62,6 +62,8 @@ e2e/            Playwright；collab.spec.ts 用兩個瀏覽器測一起編輯
 - **`model.ts` 和 `bits.ts`、`unionFind.ts`、`trie.ts` 互相引用**：這些檔案的頂層（常數、`const x = ...`）不能用到 model 的值，只能在函式裡用，不然看誰先載入，會讀到還沒初始化的值。
 - **一起編輯的同步規則**：每個元件為單位，伺服器收到的順序決定誰贏（last-write-wins）；自己還沒被確認的修改，不套用別人對同一個元件的修改；復原只退回自己的動作（別人的修改會套進復原紀錄的每個版本）。改這部分要跑 `src/collab/client.test.ts`（模擬網路的收斂測試）。
 - **共用伺服器只接受 `wrangler.jsonc` 裡 `ALLOWED_ORIGINS` 列的網址**；新的網站要用共用，就加在這裡。
+- **浮在畫布上的面板都加 `data-ui`**：點擊和滾輪不會傳到白板（滾輪捲面板自己，捲不動就什麼都不做）。會擋住元件的列也要列在 `Whiteboard.tsx` 的 `OVERLAYS`：點一下加進來的元件先放在畫面裡看得到的空位（`freeSpot` 的 `visible`），畫好之後用 `revealInside` 讓開這些列。
+- **新使用者試用（2026-11-06）找到、已修的**：模板放到畫面外、新文字不能直接打字、串列箭頭看不出能點、說明面板滾輪捲到白板、手機選取列看不出能滑。還沒修的：分享前沒有說明、樹的可拖範圍太大、清空畫布後舊步驟還在、`prev` 不能指向 None、工具列蓋住內容、文字不能換色、鉛筆線選不到、手機縮放停在 35%、模板在手機元件列的最後面。
 - 新增的套件釘版本；Playwright 固定在 1.63.0（要跟裝好的瀏覽器版本一樣）。
 
 ## 測試
@@ -81,7 +83,7 @@ e2e/            Playwright；collab.spec.ts 用兩個瀏覽器測一起編輯
   2. CI 通過、使用者說合併後：`git tag -a vX.Y.Z -m vX.Y.Z`、`git push origin vX.Y.Z`、`gh release create vX.Y.Z`（寫這版的改變）。
   3. 發 release 之後，`.github/workflows/publish.yml` 會自動發佈到 npm（信任發佈，不用 token，附來源證明）；它會先確認 tag 跟 `package.json` 的版本一樣。到 Actions 確認那次執行成功，`npm view dsa-whiteboard version` 是新版本。
   4. 到刷題教練開 PR，把依賴改成新版本：`npm install dsa-whiteboard@X.Y.Z --save-exact`。
-- 目前最新版：v0.1.11（第一個由 GitHub Actions 自動發佈到 npm 的版本；v0.1.10 沒有上 npm）。v0.1.9（使用說明改成鍵帽和小滑鼠的圖、各元件的用法收起來，手機只顯示觸控手勢；在 `src/components/HelpPanel.tsx`）。v0.1.8 加了按住 Shift 或 Ctrl 畫正圓、調整大小時維持形狀，v0.1.7 加了貼上整段範例。v0.1.6 加了並查集、字典樹、位元列。v0.1.5 修了桌機上選取列蓋住逐步播放，v0.1.4 加了一起編輯、ShareControls。v0.1.9 起發佈在 npm：0.1.9 是使用者手動發的第一版，之後都由 `publish.yml` 發佈（npm 的套件設定裡把這個 workflow 設成 trusted publisher，並且關掉 token 發佈）。
+- 目前最新版：v0.1.11（第一個由 GitHub Actions 自動發佈到 npm 的版本；v0.1.10 沒有上 npm）。v0.1.12（還沒發佈）修新使用者試用找到的問題。v0.1.9（使用說明改成鍵帽和小滑鼠的圖、各元件的用法收起來，手機只顯示觸控手勢；在 `src/components/HelpPanel.tsx`）。v0.1.8 加了按住 Shift 或 Ctrl 畫正圓、調整大小時維持形狀，v0.1.7 加了貼上整段範例。v0.1.6 加了並查集、字典樹、位元列。v0.1.5 修了桌機上選取列蓋住逐步播放，v0.1.4 加了一起編輯、ShareControls。v0.1.9 起發佈在 npm：0.1.9 是使用者手動發的第一版，之後都由 `publish.yml` 發佈（npm 的套件設定裡把這個 workflow 設成 trusted publisher，並且關掉 token 發佈）。
 - **npm 信任發佈的坑**：
   - trusted publisher 預設只允許 `npm stage publish`（暫存，要人用 2FA 核准）；`publish.yml` 用的是 `npm publish`，所以那筆設定要允許 publish，不然會得到 403「OIDC permission denied for this action」，而且 log 裡來源證明還是會簽成功，容易誤以為是 workflow 的問題。網頁上的勾選曾經沒存進去，用指令確認最準：`npm trust list dsa-whiteboard` 的 `permissions` 要有 `publish`；不對就 `npm trust revoke dsa-whiteboard --id=<id>`，再 `npm trust github dsa-whiteboard --file publish.yml --repo Lego514/dsa-whiteboard --allow-publish --allow-stage-publish -y`（都要使用者自己登入、做 2FA）。
   - `setup-node` 不要設 `registry-url`：它會寫一行空的 `_authToken`，npm 就不走 OIDC。

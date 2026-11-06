@@ -10,6 +10,7 @@ import {
   checkpoint,
   commit,
   contentBounds,
+  freeSpot,
   createElement,
   distanceToShapeEdge,
   deleteCell,
@@ -105,6 +106,24 @@ describe('creating elements', () => {
         expect(apart, `${a.id} and ${b.id}`).toBe(true);
       }
     }
+  });
+
+  it('keeps a new element on screen when the middle is taken, instead of pushing it off the top', () => {
+    // 畫面中間被一個大陣列占住，畫面上方（y < 0）還有地方，但那裡看不到
+    const big: ElementOf<'list'> = { ...(createElement('array', { x: -150, y: -60 }, 'big', texts) as ElementOf<'list'>), items: Array.from({ length: 7 }, (_, i) => String(i)) };
+    const doc: BoardDoc = { elements: [big] };
+    const visible = { x: -300, y: -100, w: 600, h: 500 };
+    const spot = freeSpot(doc, 200, 80, { x: 0, y: 0 }, undefined, visible);
+    expect(spot.x).toBeGreaterThanOrEqual(visible.x);
+    expect(spot.y).toBeGreaterThanOrEqual(visible.y);
+    expect(spot.x + 200).toBeLessThanOrEqual(visible.x + visible.w);
+    expect(spot.y + 80).toBeLessThanOrEqual(visible.y + visible.h);
+    // 一樣近的位置先放旁邊、再放下面，最後才放上面
+    const small = freeSpot({ elements: [createElement('treeNode', { x: -24, y: -24 }, 'n', texts)] }, 40, 40, { x: 0, y: 0 });
+    expect(small.y).toBe(-20);
+    // 畫面裡全滿才放到畫面外，不會找不到位置
+    const tiny = { x: 0, y: 0, w: 10, h: 10 };
+    expect(freeSpot(doc, 200, 80, { x: 0, y: 0 }, undefined, tiny)).toEqual(freeSpot(doc, 200, 80, { x: 0, y: 0 }));
   });
 
   it('gives each common pointer name its own color, and any name a stable one', () => {

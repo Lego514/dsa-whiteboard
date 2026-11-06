@@ -17,6 +17,7 @@ import {
   recursionPreorder,
   recursionStep,
   repeatColors,
+  revealInside,
   revealShift,
   revealShiftX,
   unionRect,
@@ -257,6 +258,36 @@ describe('keeping the selection clear of the selection bar', () => {
     const topBar = { x: 400, y: 12, w: 480, h: 50 };
     expect(revealShift({ x: 500, y: 30, w: 100, h: 40 }, topBar, desktop)).toBe(44);
     expect(revealShift({ x: 100, y: 30, w: 100, h: 40 }, topBar, desktop)).toBe(0);
+  });
+});
+
+describe('showing what was just added', () => {
+  const desktop = { x: 0, y: 0, w: 1000, h: 600 };
+  const steps = { x: 12, y: 12, w: 170, h: 40 };
+  const selbar = { x: 400, y: 12, w: 300, h: 46 };
+  const tools = { x: 300, y: 540, w: 400, h: 48 };
+  const zoom = { x: 940, y: 420, w: 44, h: 168 };
+  const overlays = [steps, selbar, tools, zoom];
+
+  it('leaves it alone when it is already in the clear', () => {
+    expect(revealInside({ x: 400, y: 200, w: 200, h: 100 }, desktop, overlays)).toEqual({ x: 0, y: 0 });
+  });
+
+  it('moves a group out from under the selection bar at the top, or off the bottom toolbar', () => {
+    // 模板放在畫面上方，一半被選取列蓋住、一半跑出畫面
+    expect(revealInside({ x: 380, y: -40, w: 300, h: 160 }, desktop, overlays)).toEqual({ x: 0, y: 110 });
+    expect(revealInside({ x: 380, y: 450, w: 300, h: 160 }, desktop, overlays)).toEqual({ x: 0, y: -82 });
+  });
+
+  it('only counts bars it actually sits under, and brings it in from the side', () => {
+    // 在左邊、選取列旁邊：上面只被逐步播放擋，不用讓選取列
+    expect(revealInside({ x: 200, y: 20, w: 150, h: 80 }, desktop, overlays)).toEqual({ x: 0, y: 0 });
+    // 從右邊超出畫面：先挪進來
+    expect(revealInside({ x: 900, y: 200, w: 200, h: 100 }, desktop, overlays)).toEqual({ x: -112, y: 0 });
+  });
+
+  it('lines up the top when it is taller than the free space', () => {
+    expect(revealInside({ x: 380, y: 200, w: 300, h: 900 }, desktop, overlays)).toEqual({ x: 0, y: -130 });
   });
 });
 

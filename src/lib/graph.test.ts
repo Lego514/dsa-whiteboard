@@ -82,8 +82,8 @@ describe('editing a graph', () => {
     doc = setGraphColor(doc, 'g', 3, 'green');
     doc = deleteGraphNode(doc, 'g', 1);
     expect(graph(doc).nodes).toEqual(['0', '2', '3']);
-    // 0-1、1-3 跟著節點刪掉；0-2 變成 0-1
-    expect(graph(doc).edges).toEqual([{ a: 0, b: 1 }]);
+    // 0-1、1-2 跟著節點刪掉；0-3 變成 0-2
+    expect(graph(doc).edges).toEqual([{ a: 0, b: 2 }]);
     expect(graph(doc).colors).toEqual([null, null, 'green']);
     expect((findElement(doc, 'p3') as ElementOf<'pointer'>).attach).toEqual({ id: 'g', index: 2 });
     expect((findElement(doc, 'p1') as ElementOf<'pointer'>).attach).toBeUndefined();
@@ -151,7 +151,7 @@ describe('building a graph from text', () => {
   });
 
   it('writes the graph back and replaces it from text', () => {
-    expect(serializeGraph(graph(graphDoc()))).toBe('n = 4, edges = [[0,1],[0,2],[1,3]]');
+    expect(serializeGraph(graph(graphDoc()))).toBe('n = 4, edges = [[0,1],[1,2],[0,3]]');
     expect(serializeGraph(graph(graphDoc({ nodes: ['a', 'b'], edges: [{ a: 0, b: 1, w: 'x' }] })))).toBe('edges = [["a","b","x"]]');
     let doc = addPointerAt(graphDoc(), 'g', 3, 'p');
     const result = applyStructureText(doc, 'g', 'graph = [[1],[2],[]]');

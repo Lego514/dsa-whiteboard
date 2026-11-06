@@ -48,6 +48,7 @@ import {
   POINTER_H,
   POINTER_W,
   ROW_INDEX_W,
+  tableHeadH,
   WIDE_CELL,
   type BoardColor,
   type BoardDoc,
@@ -78,6 +79,8 @@ export interface ExportOptions {
   bitsValue?: (value: number, ones: number) => string;
   sets?: (n: number) => string;
   trieResult?: (word: string, result: 'word' | 'prefix' | 'none') => string;
+  /** 字典兩欄上面的小字 */
+  dictHead?: readonly string[];
   padding?: number;
 }
 
@@ -573,12 +576,12 @@ function drawTable(el: ElementOf<'table'>, options: ExportOptions): string {
   const grid = el.variant === 'grid';
   const cellW = grid ? CELL : WIDE_CELL;
   const left = el.x + (grid ? ROW_INDEX_W : 0);
-  const top = el.y + LABEL_H + (grid ? INDEX_H : 0);
-  if (grid) {
-    for (let c = 0; c < cols; c += 1) {
-      parts.push(text(left + c * cellW + cellW / 2, el.y + LABEL_H + INDEX_H / 2, String(c), { size: 11, mono: true, color: INK_3, anchor: 'middle' }));
-    }
-  }
+  const top = el.y + LABEL_H + tableHeadH(el);
+  // 上方的小字：二維陣列是欄的索引，字典是 key、value
+  const heads = grid ? Array.from({ length: cols }, (_, c) => String(c)) : el.variant === 'dict' ? options.dictHead ?? ['key', 'value'] : [];
+  heads.slice(0, cols).forEach((head, c) => {
+    parts.push(text(left + c * cellW + cellW / 2, el.y + LABEL_H + INDEX_H / 2, head, { size: 11, mono: true, color: INK_3, anchor: 'middle' }));
+  });
   el.rows.forEach((row, r) => {
     const y = top + r * CELL;
     if (grid) parts.push(text(el.x + ROW_INDEX_W / 2, y + CELL / 2, String(r), { size: 11, mono: true, color: INK_3, anchor: 'middle' }));
@@ -710,7 +713,14 @@ function drawText(el: ElementOf<'text'>, sizes: Sizes | undefined, options: Expo
   const parts: string[] = [];
   if (el.variant === 'sticky') parts.push(rect(el.x, el.y, el.w, h, MARKER));
   lines.forEach((line, i) => {
-    parts.push(text(el.x + style.pad, el.y + style.pad + lineH * i + lineH / 2, line, { size: style.size, mono: style.mono, bold: style.bold }));
+    parts.push(
+      text(el.x + style.pad, el.y + style.pad + lineH * i + lineH / 2, line, {
+        size: style.size,
+        mono: style.mono,
+        bold: style.bold,
+        color: el.color && el.color !== 'ink' ? STROKE_COLORS[el.color] : undefined,
+      }),
+    );
   });
   return parts.join('');
 }

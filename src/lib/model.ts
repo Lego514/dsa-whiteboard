@@ -110,6 +110,11 @@ function columns(el: ElementOf<'table'>): number {
   return Math.max(1, ...el.rows.map((r) => r.length));
 }
 
+/** 表格上方的小字列：二維陣列是欄的索引，字典是 key、value；其他表格沒有 */
+export function tableHeadH(el: ElementOf<'table'>): number {
+  return el.variant === 'grid' || el.variant === 'dict' ? INDEX_H : 0;
+}
+
 /**
  * 結構化元件的大小由內容決定，畫面照這個尺寸畫；
  * 文字和變數的高度會隨內容變，畫面量到的大小傳進 measured。
@@ -161,8 +166,8 @@ export function sizeOf(el: Placed, measured?: { w: number; h: number }): { w: nu
     case 'table': {
       const cols = columns(el);
       const cellW = tableCellWidth(el);
-      if (el.variant === 'grid') return { w: ROW_INDEX_W + cols * cellW, h: LABEL_H + INDEX_H + el.rows.length * CELL };
-      return { w: cols * cellW, h: LABEL_H + el.rows.length * CELL };
+      const h = LABEL_H + tableHeadH(el) + el.rows.length * CELL;
+      return { w: (el.variant === 'grid' ? ROW_INDEX_W : 0) + cols * cellW, h };
     }
     case 'node':
       return el.variant === 'list' ? { w: LIST_NODE_W, h: LIST_NODE_H } : { w: NODE_D, h: NODE_D };
@@ -438,10 +443,11 @@ export function createElement(kind: PaletteKind, at: Point, id: string, texts: D
         ...placed,
         label: 'graph',
         nodes: ['0', '1', '2', '3'],
+        // 四個節點排成一圈（0 上、1 右、2 下、3 左）：邊都沿著外圈，中間不交叉，看起來不會像四條邊接在同一點
         edges: [
           { a: 0, b: 1 },
-          { a: 0, b: 2 },
-          { a: 1, b: 3 },
+          { a: 1, b: 2 },
+          { a: 0, b: 3 },
         ],
       };
     case 'binaryTree':
@@ -2096,19 +2102,22 @@ function distanceToSegment(p: Point, a: Point, b: Point): number {
 }
 
 /** 橡皮擦碰到的筆跡和箭頭 */
+/** 筆跡的哪一段離 at 在 radius 以內 */
+function hitStroke(el: ElementOf<'stroke'>, at: Point, radius: number): boolean {
+  const pts = el.points;
+  for (let i = 0; i + 1 < pts.length; i += 2) {
+    const a = { x: pts[i], y: pts[i + 1] };
+    const b = i + 3 < pts.length ? { x: pts[i + 2], y: pts[i + 3] } : a;
+    if (distanceToSegment(at, a, b) <= radius) return true;
+  }
+  return false;
+}
+
 export function hitInk(doc: BoardDoc, at: Point, radius: number, sizes?: Sizes): string[] {
   const hits: string[] = [];
   for (const el of doc.elements) {
     if (el.type === 'stroke') {
-      const pts = el.points;
-      for (let i = 0; i + 1 < pts.length; i += 2) {
-        const a = { x: pts[i], y: pts[i + 1] };
-        const b = i + 3 < pts.length ? { x: pts[i + 2], y: pts[i + 3] } : a;
-        if (distanceToSegment(at, a, b) <= radius) {
-          hits.push(el.id);
-          break;
-        }
-      }
+      if (hitStroke(el, at, radius)) hits.push(el.id);
     } else if (el.type === 'arrow') {
       const ends = arrowPoints(doc, el, sizes);
       if (ends && distanceToSegment(at, ends[0], ends[1]) <= radius) hits.push(el.id);
@@ -2169,12 +2178,18 @@ export function resizeShape(doc: BoardDoc, id: string, w: number, h: number): Bo
 export function recolorElements(doc: BoardDoc, ids: ReadonlySet<string>, color: BoardColor): BoardDoc {
   return {
     ...doc,
-    elements: doc.elements.map((el) => (hasColor(el) && ids.has(el.id) ? ({ ...el, color } as BoardElement) : el)),
+    elements: doc.elements.map((el) => {
+      if (!hasColor(el) || !ids.has(el.id)) return el;
+      // 文字換回墨色就不存顏色，跟沒換過一樣
+      if (el.type === 'text' && color === 'ink') return { ...el, color: undefined };
+      return { ...el, color } as BoardElement;
+    }),
   };
 }
 
-/** 有沒有可以換顏色的東西：框、範圍框、箭頭、直線、筆跡 */
+/** 有沒有可以換顏色的東西：框、範圍框、箭頭、直線、筆跡、文字（程式碼有自己的上色，不算） */
 export function hasColor(el: BoardElement | undefined): boolean {
+  if (el?.type === 'text') return el.variant !== 'code';
   return el?.type === 'shape' || el?.type === 'range' || el?.type === 'arrow' || el?.type === 'stroke';
 }
 
@@ -2183,10 +2198,14 @@ export function setArrowHead(doc: BoardDoc, id: string, head: 'end' | 'none'): B
   return updateElement<ElementOf<'arrow'>>(doc, id, { head: head === 'end' ? undefined : head });
 }
 
-/** 點到的箭頭、直線或範圍框的框線（上面的優先），讓它們也能選取 */
+/** 點到的箭頭、直線、筆跡或範圍框的框線（上面的優先），讓它們也能選取 */
 export function hitConnector(doc: BoardDoc, at: Point, radius: number, sizes?: Sizes): string | undefined {
   for (let i = doc.elements.length - 1; i >= 0; i -= 1) {
     const el = doc.elements[i];
+    if (el.type === 'stroke') {
+      if (hitStroke(el, at, radius)) return el.id;
+      continue;
+    }
     if (el.type === 'range') {
       const rect = rangeRect(doc, el);
       if (rect && distanceToRectEdge(rect, at) <= radius) return el.id;
@@ -2361,8 +2380,9 @@ export function stepDoc(doc: BoardDoc, index: number): BoardDoc {
 }
 
 /** 清空畫面；記下來的步驟保留 */
-export function clearElements(doc: BoardDoc): BoardDoc {
-  return { ...doc, elements: [] };
+/** 清空畫面；withSteps 時記下的步驟也一起清掉（不然播放出來是已經不在的白板） */
+export function clearElements(doc: BoardDoc, withSteps = false): BoardDoc {
+  return withSteps ? { ...doc, elements: [], steps: undefined } : { ...doc, elements: [] };
 }
 
 // ---------- 復原紀錄 ----------

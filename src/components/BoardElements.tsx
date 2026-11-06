@@ -122,6 +122,8 @@ export function ElementView({ el, doc, selected, editing, register, ...rest }: E
         left: at.x,
         top: at.y,
         ...(fixedSize ? { width: fixedSize.w, height: fixedSize.h } : el.type === 'text' ? { width: el.w } : {}),
+        // 文字換了顏色：畫面、編輯中的輸入框都用這個顏色
+        ...(el.type === 'text' && el.color ? { color: colorVar(el.color) } : {}),
       }}
     >
       {el.type === 'shape' ? <ShapeBody el={el} selected={selected} /> : <Body el={el} editing={editing} {...rest} />}
@@ -1250,6 +1252,16 @@ function TableBody({ el, editing, onChange, onDoneEditing, onAddRow, onAddCol }:
           {Array.from({ length: cols }, (_, j) => (
             <span key={j} style={{ width: CELL }}>
               {j}
+            </span>
+          ))}
+        </div>
+      )}
+      {/* 字典的兩欄寫上 key、value，看得出 {2: 0} 哪個是鍵 */}
+      {el.variant === 'dict' && (
+        <div className="board-indices board-col-indices" aria-hidden>
+          {Array.from({ length: cols }, (_, j) => (
+            <span key={j} style={{ width: WIDE_CELL }}>
+              {t.board.dictHead[j] ?? ''}
             </span>
           ))}
         </div>

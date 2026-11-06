@@ -67,8 +67,12 @@ export const boardElementSchema = z.discriminatedUnion('type', [
     type: z.literal('pointer'),
     ...placed,
     name: text(12),
-    /** 吸附在陣列、鏈結串列的哪一格，或二元樹的哪個節點；有吸附時位置跟著它走 */
-    attach: z.object({ id: boardElementId, index: z.number().int().min(0).max(63) }).optional(),
+    /**
+     * 吸附在陣列、鏈結串列的哪一格，或二元樹的哪個節點；有吸附時位置跟著它走。
+     * none 只用在鏈結串列：指著第一個節點左邊的 null（反轉串列時 prev = None），這時 index 不用。
+     * 舊版不認得 none 會丟掉它，指標就落在第一個節點，不會壞掉
+     */
+    attach: z.object({ id: boardElementId, index: z.number().int().min(0).max(63), none: z.literal(true).optional() }).optional(),
   }),
   z.object({
     type: z.literal('arrow'),

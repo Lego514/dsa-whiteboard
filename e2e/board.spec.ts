@@ -473,6 +473,7 @@ test('builds a linked list from text, flips a link, and points the tail back', a
 
   // 點一個節點，讓尾巴接回這裡（有環），尾巴就不再接 null
   await list.locator('[data-cell="1"]').click();
+  await expect(selbar.getByRole('button', { name: 'Delete this node' })).toBeVisible();
   await selbar.getByRole('button', { name: 'Point the tail here' }).click();
   await expect(list).not.toContainText('null');
   await expect(selbar.getByRole('button', { name: 'Remove cycle' })).toBeVisible();
@@ -507,15 +508,15 @@ test('builds a binary tree from LeetCode’s format and edits it node by node', 
   // 在根節點加指標，用方向鍵走到右子節點
   await tree.locator('[data-cell="0"]').click();
   await selbar.getByRole('button', { name: '+ Pointer' }).click();
-  await expect(page.getByRole('group', { name: 'Pointer i at node 3' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Pointer node at node 3' })).toBeVisible();
   await page.keyboard.press('ArrowRight');
-  await expect(page.getByRole('group', { name: 'Pointer i at node 20' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Pointer node at node 20' })).toBeVisible();
 
   // 刪掉 20 的子樹，指標留在原地；根節點不能刪
   await tree.locator('[data-cell="2"]').click();
   await selbar.getByRole('button', { name: 'Delete this subtree' }).click();
   await expect(tree).toHaveAccessibleName('Binary tree root: [3,9,null,null,8]');
-  await expect(page.getByRole('group', { name: 'Pointer i', exact: true })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Pointer node', exact: true })).toBeVisible();
   await tree.locator('[data-cell="0"]').click();
   await expect(selbar.getByRole('button', { name: 'Delete this subtree' })).toBeDisabled();
 
@@ -531,11 +532,19 @@ test('sets up a whole scene from a template, and turns text into a heading', asy
   await expect(page.getByRole('group', { name: 'Linked list head: 1 → 2 → 3 → 4 → 5' })).toBeVisible();
   await expect(page.getByRole('group', { name: 'Pointer curr at index 0' })).toBeVisible();
   await expect(page.getByRole('group', { name: 'Pointer next at index 1' })).toBeVisible();
-  // prev 一開始是 None，不吸附在節點上
-  await expect(page.getByRole('group', { name: 'Pointer prev', exact: true })).toBeVisible();
+  // prev 一開始是 None：指著第一個節點左邊的 null，往右一格就到第一個節點，再往左回到 null
+  const prev = page.getByRole('group', { name: 'Pointer prev at null' });
+  await expect(prev).toBeVisible();
+  await expect(prev.locator('.board-pointer-none')).toHaveText('null');
   // 整組一起選取，可以直接拖動或刪除
   const selbar = page.getByRole('toolbar', { name: 'Selected element' });
   await expect(selbar).toContainText('4 selected');
+  await prev.click();
+  await selbar.getByRole('button', { name: 'Pointer right' }).click();
+  await expect(page.getByRole('group', { name: 'Pointer prev at index 0' })).toBeVisible();
+  await expect(page.locator('.board-pointer-none')).toHaveCount(0);
+  await page.keyboard.press('ArrowLeft');
+  await expect(prev).toBeVisible();
 
   await templates.getByRole('button', { name: /^Grid BFS/ }).click();
   await expect(page.getByRole('group', { name: /^2D array grid/ })).toBeVisible();
@@ -708,13 +717,13 @@ test('traces a recursion tree: returns, pruning, child calls, and a pointer walk
   // 指標照呼叫的順序走：f(4) → f(3) → f(2)，↑ 回到呼叫者
   await tree.locator('[data-cell="0"]').click();
   await selbar.getByRole('button', { name: '+ Pointer' }).click();
-  const pointer = page.getByRole('group', { name: /^Pointer i/ });
-  await expect(pointer).toHaveAccessibleName('Pointer i at node f(4)');
+  const pointer = page.getByRole('group', { name: /^Pointer node/ });
+  await expect(pointer).toHaveAccessibleName('Pointer node at node f(4)');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
-  await expect(pointer).toHaveAccessibleName('Pointer i at node f(2)');
+  await expect(pointer).toHaveAccessibleName('Pointer node at node f(2)');
   await selbar.getByRole('button', { name: 'Back to caller' }).click();
-  await expect(pointer).toHaveAccessibleName('Pointer i at node f(3)');
+  await expect(pointer).toHaveAccessibleName('Pointer node at node f(3)');
 
   // 用縮排的文字整個換掉；指標還指得到就留著
   // 前面選了最下面的呼叫，畫面往上挪過；先顯示全部，再點名稱選整棵樹
@@ -724,7 +733,7 @@ test('traces a recursion tree: returns, pruning, child calls, and a pointer walk
   await selbar.getByRole('textbox', { name: 'Build from text' }).fill('f(2) => 1\n  f(1) => 1\n  f(0) => 0');
   await selbar.getByRole('button', { name: 'Apply' }).click();
   await expect(tree).toHaveAccessibleName('Recursion tree fib: f(2) = 1 (f(1) = 1, f(0) = 0)');
-  await expect(pointer).toHaveAccessibleName('Pointer i at node f(1)');
+  await expect(pointer).toHaveAccessibleName('Pointer node at node f(1)');
   await selbar.getByRole('button', { name: 'Stop coloring repeats' }).click();
   await expect(selbar.getByRole('button', { name: 'Color repeated calls' })).toBeVisible();
 });

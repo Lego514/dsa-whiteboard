@@ -126,6 +126,17 @@ describe('creating elements', () => {
     expect(freeSpot(doc, 200, 80, { x: 0, y: 0 }, undefined, tiny)).toEqual(freeSpot(doc, 200, 80, { x: 0, y: 0 }));
   });
 
+  it('names pointers i, j on arrays but node, cur on trees and graphs', () => {
+    const tree = createElement('binaryTree', { x: 0, y: 0 }, 't', texts);
+    const array = createElement('array', { x: 0, y: 300 }, 'a', texts);
+    let doc: BoardDoc = { elements: [tree, array] };
+    expect(nextPointerName(doc, array)).toBe('i');
+    expect(nextPointerName(doc, tree)).toBe('node');
+    doc = addElement(doc, { type: 'pointer', id: 'p', x: 0, y: 0, name: 'node', attach: { id: 't', index: 0 } });
+    expect(nextPointerName(doc, tree)).toBe('cur');
+    expect(nextPointerName(doc)).toBe('i');
+  });
+
   it('gives each common pointer name its own color, and any name a stable one', () => {
     expect(['i', 'j', 'k', 'l'].map(pointerTone)).toEqual(['blue', 'orange', 'green', 'purple']);
     expect(pointerTone('left')).toBe(pointerTone('left'));

@@ -42,6 +42,7 @@ import {
   LIST_NODE_H,
   LIST_NODE_W,
   NODE_D,
+  noneLabel,
   pointerPosition,
   pointerTone,
   POINTER_H,
@@ -613,6 +614,12 @@ function drawPointer(doc: BoardDoc, el: ElementOf<'pointer'>, options: ExportOpt
   const font = `bold 13px ${MONO}`;
   const w = Math.max(30, options.measure(el.name, font) + 16);
   const cx = x + POINTER_W / 2;
+  // 指著鏈結串列左邊的 null：跟畫面上一樣畫出那個 null
+  const none = noneLabel(doc, el);
+  const nullLabel = none
+    ? rect(none.x + 2, none.y + 6, none.w - 4, none.h - 12, 'none', INK_3, ' stroke-dasharray="4 3" rx="6"') +
+      text(none.x + none.w / 2, none.y + none.h / 2, 'null', { size: 13, mono: true, color: INK_3, anchor: 'middle' })
+    : '';
   if (pointsDown(doc, el)) {
     // 二元樹上的指標：名牌在上、箭頭朝下指著節點
     const tip = y + POINTER_H - 0.5;
@@ -623,6 +630,7 @@ function drawPointer(doc: BoardDoc, el: ElementOf<'pointer'>, options: ExportOpt
     ].join('');
   }
   return [
+    nullLabel,
     `<path d="M${cx} ${y + 0.5}L${cx + 4.5} ${y + 6}H${cx + 1.25}V${y + 12}H${cx - 1.25}V${y + 6}H${cx - 4.5}Z" fill="${strong}"/>`,
     rect(cx - w / 2, y + 12, w, 22, soft, strong, ' stroke-width="1.5" rx="11"'),
     text(cx, y + 23, el.name, { size: 13, mono: true, bold: true, color: strong, anchor: 'middle' }),

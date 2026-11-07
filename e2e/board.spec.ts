@@ -1,4 +1,11 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+
+/** 標題列可以收起來的按鈕（匯出、語言、深淺色）：手機上要先打開「⋯」選單 */
+async function headerButton(page: Page, name: string) {
+  const more = page.getByRole('button', { name: 'More', exact: true });
+  if (await more.isVisible()) await more.click();
+  return page.getByRole('button', { name, exact: true });
+}
 
 test('sketches an array with a pointer and keeps it after reloading', async ({ page }) => {
   await page.goto('./');
@@ -562,12 +569,12 @@ test('records steps and plays them back with notes', async ({ page }) => {
 
 test('exports the board, or the step being played, as a PNG', async ({ page }) => {
   await page.goto('./');
-  const exportButton = page.getByRole('button', { name: 'Export image' });
-  await expect(exportButton).toBeDisabled();
+  await expect(await headerButton(page, 'Export image')).toBeDisabled();
+  await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Array', exact: true }).click();
   await page.getByRole('button', { name: 'Pointer', exact: true }).click();
 
-  const [download] = await Promise.all([page.waitForEvent('download'), exportButton.click()]);
+  const [download] = await Promise.all([page.waitForEvent('download'), (await headerButton(page, 'Export image')).click()]);
   expect(download.suggestedFilename()).toBe('dsa-whiteboard.png');
   // 下載列不一定看得到：畫面上說存了什麼
   await expect(page.getByText('Saved dsa-whiteboard.png to your downloads')).toBeVisible();
@@ -581,7 +588,7 @@ test('exports the board, or the step being played, as a PNG', async ({ page }) =
   // 播放時匯出的是那一步
   await page.keyboard.press('s');
   await page.getByRole('button', { name: 'Play the step from the start' }).click();
-  const [stepDownload] = await Promise.all([page.waitForEvent('download'), exportButton.click()]);
+  const [stepDownload] = await Promise.all([page.waitForEvent('download'), (await headerButton(page, 'Export image')).click()]);
   expect(stepDownload.suggestedFilename()).toBe('dsa-whiteboard-step-1.png');
 });
 
@@ -1236,6 +1243,33 @@ test('pastes a whole example and draws every argument at once', async ({ page })
   await expect(page.getByRole('group', { name: /^Graph edges: n = 4, edges = \[\[0,1\],\[1,2\],\[2,3\]\]/ })).toBeVisible();
 });
 
+test('puts language, light or dark, the source link, and export in a ⋯ menu on phones, and a row of buttons on desktop', async ({ page, isMobile }) => {
+  if (!isMobile) await page.setViewportSize({ width: 390, height: 700 });
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Array', exact: true }).click();
+  // 標題和存檔狀態都放得下
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('DSA Whiteboard');
+  await expect(page.getByText('Saved on this device')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Close' })).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'More', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Export image', exact: true })).toBeEnabled();
+  await expect(page.getByRole('link', { name: 'Source code on GitHub' })).toBeVisible();
+  // 選單裡每一項都寫字；選了就關起來
+  await page.getByRole('button', { name: '切換成中文', exact: true }).click();
+  await expect(page.getByRole('button', { name: '切換成中文' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '陣列', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '更多', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Switch to English', exact: true })).toBeVisible();
+
+  if (isMobile) return;
+  // 寬的畫面：沒有「⋯」，排成一排
+  await page.setViewportSize({ width: 1200, height: 700 });
+  await expect(page.getByRole('button', { name: '更多' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Switch to English', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '匯出圖片' })).toBeVisible();
+});
+
 test('switches between light and dark from the top right, and remembers the choice', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto('./');
@@ -1245,7 +1279,7 @@ test('switches between light and dark from the top right, and remembers the choi
   const html = page.locator('html');
   const paper = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
   const light = await paper();
-  await page.getByRole('button', { name: 'Switch to dark mode' }).click();
+  await (await headerButton(page, 'Switch to dark mode')).click();
   await expect(html).toHaveAttribute('data-theme', 'dark');
   await expect.poll(paper).not.toBe(light);
   await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#0e1829');
@@ -1253,7 +1287,7 @@ test('switches between light and dark from the top right, and remembers the choi
   // 重新整理還是深色：在畫面出來前就套上，不會先閃一下淺色
   await page.reload();
   await expect(html).toHaveAttribute('data-theme', 'dark');
-  await page.getByRole('button', { name: 'Switch to light mode' }).click();
+  await (await headerButton(page, 'Switch to light mode')).click();
   await expect(html).toHaveAttribute('data-theme', 'light');
   await expect.poll(paper).toBe(light);
 });

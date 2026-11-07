@@ -56,6 +56,7 @@ export const en: Messages = {
   },
   board: {
     close: 'Close',
+    more: 'More',
     savedLocal: 'Saved on this device',
     saving: 'Saving…',
     tooLarge: 'This whiteboard is too large to sync. Try erasing some ink.',

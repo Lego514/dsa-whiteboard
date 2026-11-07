@@ -69,6 +69,92 @@
 }
 
 /* 標題列的高度要固定：存檔狀態的字變長變短時，標題不能換行把整個畫布往下推 */
+/* 標題列上可以收起來的按鈕：寬的畫面是一排小圖示 */
+.board-menu-inline {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 6px;
+}
+
+.board-menu-inline svg,
+.board-more svg {
+  width: 18px;
+  height: 18px;
+}
+
+.board-more {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+}
+
+/* 手機的「⋯」選單：一項一列，圖示後面寫字 */
+.board-more-menu {
+  width: min(240px, calc(100vw - 24px));
+  padding: 6px;
+}
+
+.board-more-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.board-more-item:hover:not(:disabled) {
+  background: var(--sheet-2);
+}
+
+.board-more-item:disabled {
+  color: var(--ink-3);
+  cursor: default;
+}
+
+.board-more-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
+.board-more-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* 關閉：只有一個 ×，按得到的範圍跟其他小按鈕一樣 */
+.board-close {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+}
+
+.board-close svg {
+  width: 18px;
+  height: 18px;
+}
+
 .board-heading {
   display: flex;
   flex: 1 1 auto;
@@ -83,6 +169,15 @@
   line-height: 1.3;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+/* 手機：存檔狀態是標題上面那行小字，樣子跟說明一樣 */
+.board-heading > .board-save {
+  margin-left: 0;
+  max-width: none;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.3;
 }
 
 .board-title {

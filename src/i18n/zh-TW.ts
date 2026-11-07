@@ -55,6 +55,7 @@ export const zhTW = {
   },
   board: {
     close: '關閉',
+    more: '更多',
     savedLocal: '已存在這台裝置',
     saving: '儲存中…',
     tooLarge: '白板太大了，雲端同步可能會失敗。擦掉一些筆跡試試。',

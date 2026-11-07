@@ -9,6 +9,7 @@ export {
   type WhiteboardProps,
 } from './components/Whiteboard';
 export { ShareControls, type ShareControlsProps } from './components/ShareControls';
+export type { HeaderMenuItem } from './components/HeaderMenu';
 export type { Locale, Messages } from './i18n';
 export type { CollabStatus } from './collab/client';
 export { newRoomId, PEER_COLORS, ROOM_ID, type Peer, type PeerColor } from './collab/messages';

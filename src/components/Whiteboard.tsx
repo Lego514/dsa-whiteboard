@@ -27,6 +27,7 @@ import { ElementView } from './BoardElements';
 import { PlaybackBar, StepsWidget } from './BoardSteps';
 import { Dialog } from './Dialog';
 import { HelpPanel } from './HelpPanel';
+import { InlineMenuItems, MoreMenu, useNarrowHeader, type HeaderMenuItem } from './HeaderMenu';
 import { NoticeProvider, useNotice } from './Notice';
 import { PasteExampleDialog } from './PasteExample';
 import { BitsActions, TrieActions, TrieNodeActions, UnionFindActions, UnionFindNodeActions } from './StructureActions';
@@ -134,8 +135,13 @@ export interface WhiteboardProps<R = unknown> {
   caption?: string;
   /** 標題旁邊的小標籤，例如題目難度 */
   badge?: ReactNode;
-  /** 標題列右邊、匯出按鈕前面的其他按鈕或連結；共用的按鈕用 ShareControls */
+  /** 標題列右邊一直看得到的按鈕；共用的按鈕用 ShareControls */
   actions?: ReactNode;
+  /**
+   * 標題列上可以收起來的按鈕（語言、深淺色、原始碼連結…）：寬的畫面排成一排小圖示，
+   * 手機上跟匯出圖片一起收進右上角的「⋯」選單
+   */
+  menu?: readonly HeaderMenuItem[];
   /** 存好之後顯示的文字；沒給就是「已存在這台裝置」。共用時改成顯示連線狀態 */
   savedLabel?: string;
   locale?: Locale;
@@ -169,6 +175,7 @@ function Editor<R>({
   caption,
   badge,
   actions,
+  menu = [],
   savedLabel,
   onClose,
   exportName = 'whiteboard',
@@ -177,6 +184,8 @@ function Editor<R>({
 }: Omit<WhiteboardProps<R>, 'locale' | 'onNotice'>) {
   const { t } = useI18n();
   const toast = useNotice();
+  /** 手機的標題列放不下：語言、深淺色、匯出收進選單 */
+  const narrowHeader = useNarrowHeader();
   const Session = explain?.Session;
   const Review = explain?.Review;
   const [history, setHistory] = useState(() => m.initHistory(initial));
@@ -1434,43 +1443,58 @@ function Editor<R>({
   const saving = doc !== savedDoc;
   const grid = 24 * view.zoom;
 
+  /** 說清楚存在哪裡，例如只在這台裝置，或會同步到雲端；共用時是連線狀態 */
+  const saveStatus = (
+    <span className="board-save" aria-live="polite">
+      {tooLarge ? t.board.tooLarge : collab ? roomLabel(room.status, t) : saving ? t.board.saving : (savedLabel ?? t.board.savedLocal)}
+    </span>
+  );
+
   return (
     <div className="board" role="dialog" aria-modal="true" aria-label={title} data-playing={playIndex !== null || undefined}>
       <header className="board-head">
         {onClose && (
-          <button type="button" className="btn btn-quiet btn-small" onClick={onClose}>
-            {t.board.close}
+          // 只放 ×：比「關閉」「Close」省一點寬度，手機上標題列放得下題目名稱；名稱和提示還是「關閉」
+          <button type="button" className="btn btn-quiet btn-small board-close" aria-label={t.board.close} title={t.board.close} onClick={onClose}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+              <path d="M6 6l12 12M18 6 6 18" />
+            </svg>
           </button>
         )}
         <div className="board-heading">
-          {caption && <span className="board-caption">{caption}</span>}
+          {/* 手機上存檔狀態放在標題上面那行小字（取代說明），標題自己一整行，放得下題目名稱 */}
+          {narrowHeader ? saveStatus : caption && <span className="board-caption">{caption}</span>}
           <h1 className="board-title">
             <span>{title}</span>
             {badge}
           </h1>
         </div>
-        {/* 說清楚存在哪裡，例如只在這台裝置，或會同步到雲端；共用時是連線狀態 */}
-        <span className="board-save" aria-live="polite">
-          {tooLarge
-            ? t.board.tooLarge
-            : collab
-              ? roomLabel(room.status, t)
-              : saving
-                ? t.board.saving
-                : (savedLabel ?? t.board.savedLocal)}
-        </span>
+        {!narrowHeader && saveStatus}
         <RoomContext.Provider value={collab ? { status: room.status } : null}>{actions}</RoomContext.Provider>
-        <button
-          type="button"
-          className="btn btn-small board-export"
-          disabled={shownDoc.elements.length === 0}
-          aria-label={t.board.export}
-          title={t.board.export}
-          onClick={() => void exportImage()}
-        >
-          {ICON_EXPORT}
-          <span className="board-export-text">{t.board.export}</span>
-        </button>
+        {narrowHeader ? (
+          // 手機：語言、深淺色這些和匯出圖片收進「⋯」選單，標題列才放得下題目名稱和存檔狀態
+          <MoreMenu
+            items={[
+              ...menu,
+              { label: t.board.export, icon: ICON_EXPORT, disabled: shownDoc.elements.length === 0, onSelect: () => void exportImage() },
+            ]}
+          />
+        ) : (
+          <>
+            <InlineMenuItems items={menu} />
+            <button
+              type="button"
+              className="btn btn-small board-export"
+              disabled={shownDoc.elements.length === 0}
+              aria-label={t.board.export}
+              title={t.board.export}
+              onClick={() => void exportImage()}
+            >
+              {ICON_EXPORT}
+              <span className="board-export-text">{t.board.export}</span>
+            </button>
+          </>
+        )}
       </header>
 
       <div className="board-body">

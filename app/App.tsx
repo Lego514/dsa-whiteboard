@@ -1,5 +1,16 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
-import { EMPTY_DOC, guestName, isOldGuestName, newRoomId, ROOM_ID, ShareControls, Whiteboard, type BoardDoc, type Locale } from '../src';
+import {
+  EMPTY_DOC,
+  guestName,
+  isOldGuestName,
+  newRoomId,
+  ROOM_ID,
+  ShareControls,
+  Whiteboard,
+  type BoardDoc,
+  type HeaderMenuItem,
+  type Locale,
+} from '../src';
 import { boardDocSchema } from '../src/schema';
 
 // 獨立的白板網站：一張白板存在這個瀏覽器裡，不用登入。
@@ -228,23 +239,15 @@ export function App() {
         onSaveCopy={saveCopy}
         onLeave={leave}
       />
-      <button type="button" className="btn btn-quiet btn-small" aria-label={text.switchLabel} title={text.switchLabel} onClick={switchLocale}>
-        {text.switchTo}
-      </button>
-      <button
-        type="button"
-        className="btn btn-quiet btn-small app-icon-link"
-        aria-label={theme.dark ? text.toLight : text.toDark}
-        title={theme.dark ? text.toLight : text.toDark}
-        onClick={theme.toggle}
-      >
-        {theme.dark ? SUN_ICON : MOON_ICON}
-      </button>
-      <a className="btn btn-quiet btn-small app-icon-link app-github" href={REPO_URL} target="_blank" rel="noopener noreferrer" aria-label={text.source} title={text.source}>
-        {GITHUB_ICON}
-      </a>
     </span>
   );
+
+  // 語言、深淺色、原始碼：寬的畫面排成一排小圖示，手機上收進「⋯」選單
+  const menu: HeaderMenuItem[] = [
+    { label: text.switchLabel, icon: text.switchTo, lang: locale === 'en' ? 'zh-Hant' : 'en', onSelect: switchLocale },
+    { label: theme.dark ? text.toLight : text.toDark, icon: theme.dark ? SUN_ICON : MOON_ICON, onSelect: theme.toggle },
+    { label: text.source, icon: GITHUB_ICON, href: REPO_URL },
+  ];
 
   const collab =
     room && COLLAB_URL
@@ -260,6 +263,7 @@ export function App() {
       onChange={(doc) => (current.current = doc)}
       title="DSA Whiteboard"
       exportName="dsa-whiteboard"
+      menu={menu}
       actions={actions}
       collab={collab}
     />

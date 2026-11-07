@@ -504,6 +504,8 @@ function Editor<R>({
       startEditing(id);
       setFreshText(id);
     }
+    // 複雜度區塊：答案是空的，直接從時間開始填
+    if (el.type === 'complexity') startEditing(id);
   };
 
   /** 幫兩個指標加範圍框，選取新的框（可以直接換色） */
@@ -744,6 +746,7 @@ function Editor<R>({
       sets: t.board.unionFind.sets,
       trieResult: t.board.trie.result,
       dictHead: t.board.dictHead,
+      complexity: t.board.complexity,
     });
     if (!out) return;
     try {
@@ -2868,6 +2871,8 @@ const PALETTE_ICONS: Record<m.PaletteKind, ReactNode> = {
   ),
   grid: <path d="M4 4h16v16H4zM4 9.3h16M4 14.7h16M9.3 4v16M14.7 4v16" />,
   var: <path d="M3.5 8.5c0-1.4 1.1-2.5 2.5-2.5h12c1.4 0 2.5 1.1 2.5 2.5v7c0 1.4-1.1 2.5-2.5 2.5H6c-1.4 0-2.5-1.1-2.5-2.5zM7 10l3 4M10 10l-3 4M13.5 10.8h4M13.5 13.2h4" />,
+  // 一個大 O 加括號
+  complexity: <path d="M3.5 12a3.5 4.5 0 1 0 7 0a3.5 4.5 0 1 0-7 0M15 6.5q-2.2 5.5 0 11M19 6.5q2.2 5.5 0 11" />,
   binaryTree: (
     <>
       <circle cx="12" cy="5" r="2.4" />

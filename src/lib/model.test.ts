@@ -8,6 +8,8 @@ import {
   appendPoint,
   arrowPoints,
   CELL,
+  COMPLEXITY_H,
+  COMPLEXITY_W,
   findElement,
   graphLayout,
   hasColor,
@@ -65,7 +67,7 @@ import {
   type ElementOf,
 } from './model';
 
-const texts = { heading: 'Title', text: 'Text', sticky: 'Idea' };
+const texts = { heading: 'Title', text: 'Text', sticky: 'Idea', complexity: 'Complexity' };
 
 function boardWithArray(): BoardDoc {
   const array = createElement('array', { x: 100, y: 100 }, 'arr', texts);
@@ -82,7 +84,7 @@ describe('creating elements', () => {
     for (const { kinds } of PALETTE) {
       for (const kind of kinds) doc = addElement(doc, createElement(kind, { x: 10.6, y: -3.2 }, `k${doc.elements.length}`, texts));
     }
-    expect(doc.elements).toHaveLength(22);
+    expect(doc.elements).toHaveLength(23);
     expect(boardDocSchema.parse(doc)).toEqual(doc);
     expect(doc.elements[0]).toMatchObject({ x: 11, y: -3 });
   });
@@ -388,6 +390,28 @@ describe('small fixes from the first-time user test', () => {
     const svg = boardToSvg({ elements: [dict] }, undefined, { ...svgOptions, dictHead: ['key', 'value'] })!.svg;
     expect(svg).toContain('>key</text>');
     expect(svg).toContain('>value</text>');
+  });
+});
+
+describe('complexity block', () => {
+  it('starts with a title and empty answers, so you think of them yourself, and fits the save format', () => {
+    const block = createElement('complexity', { x: 10, y: 20 }, 'c', texts);
+    expect(block).toEqual({ type: 'complexity', id: 'c', x: 10, y: 20, title: 'Complexity', time: '', timeWhy: '', space: '', spaceWhy: '' });
+    expect(sizeOf(block)).toEqual({ w: COMPLEXITY_W, h: COMPLEXITY_H });
+    expect(boardDocSchema.safeParse({ elements: [block] }).success).toBe(true);
+    expect(PALETTE.find((g) => g.group === 'notes')?.kinds).toContain('complexity');
+  });
+
+  it('exports the answers written out, an empty one as O(?), and cuts a long reason short', () => {
+    const block = {
+      ...(createElement('complexity', { x: 0, y: 0 }, 'c', texts) as ElementOf<'complexity'>),
+      time: 'n^2',
+      timeWhy: 'two nested loops over every pair of numbers in the input array, which is slow',
+    };
+    const svg = boardToSvg({ elements: [block] }, undefined, { measure: estimateWidth, front: 'f', back: 'b' })!.svg;
+    expect(svg).toContain('>O(n²)</text>');
+    expect(svg).toContain('>O(?)</text>');
+    expect(svg).toContain('…</text>');
   });
 });
 

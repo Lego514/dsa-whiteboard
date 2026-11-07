@@ -31,7 +31,7 @@ import {
 } from './model';
 import { applyStructureText, inlineRecursion, parseRecursion, serializeRecursion } from './structures';
 
-const texts = { heading: 'Title', text: 'Text', sticky: 'Idea' };
+const texts = { heading: 'Title', text: 'Text', sticky: 'Idea', complexity: 'Complexity' };
 
 /** 元件庫的預設內容：fib(4) */
 function fibDoc(): BoardDoc {

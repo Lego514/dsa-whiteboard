@@ -4,6 +4,8 @@ import {
   arrowPoints,
   rangeRect,
   CELL,
+  COMPLEXITY_H,
+  COMPLEXITY_W,
   contentBounds,
   CODE_GUTTER_W,
   CODE_HEAD_H,
@@ -59,6 +61,7 @@ import {
   type Sizes,
 } from './model';
 import { bitPosition, bitsValue, isBits, onesCount } from './bits';
+import { formatBigO } from './complexity';
 import { TRIE_NODE, trieLayout, triePath, trieSearch } from './trie';
 import { ufArrowPath, ufColors, UF_HEAD_W, ufLayout, ufLoopPath, UF_NODE } from './unionFind';
 
@@ -81,6 +84,8 @@ export interface ExportOptions {
   trieResult?: (word: string, result: 'word' | 'prefix' | 'none') => string;
   /** 字典兩欄上面的小字 */
   dictHead?: readonly string[];
+  /** 複雜度區塊的「時間」「空間」和沒填時的 O(?) */
+  complexity?: { time: string; space: string; missing: string };
   padding?: number;
 }
 
@@ -640,6 +645,26 @@ function drawPointer(doc: BoardDoc, el: ElementOf<'pointer'>, options: ExportOpt
   ].join('');
 }
 
+/** 複雜度區塊：跟畫面一樣，標題加時間、空間兩列；理由放不下時加省略號 */
+function drawComplexity(el: ElementOf<'complexity'>, options: ExportOptions): string {
+  const parts = [rect(el.x, el.y, COMPLEXITY_W, COMPLEXITY_H, SHEET, INK_3, ' rx="10"')];
+  parts.push(text(el.x + 12, el.y + 18, fit(el.title, COMPLEXITY_W - 24, `bold 13px ${SANS}`, options.measure), { size: 13, bold: true }));
+  const rows = [
+    [options.complexity?.time ?? 'Time', el.time, el.timeWhy],
+    [options.complexity?.space ?? 'Space', el.space, el.spaceWhy],
+  ];
+  rows.forEach(([label, value, why], i) => {
+    const y = el.y + 50 + i * 32;
+    const answer = formatBigO(value) || (options.complexity?.missing ?? 'O(?)');
+    parts.push(
+      text(el.x + 12, y, label, { size: 13, color: INK_2 }),
+      text(el.x + 62, y, answer, { size: 15, mono: true, bold: true, color: value.trim() ? INK : INK_3 }),
+      text(el.x + 158, y, fit(why, COMPLEXITY_W - 170, `13px ${SANS}`, options.measure), { size: 13, color: INK_2 }),
+    );
+  });
+  return parts.join('');
+}
+
 function drawVar(el: ElementOf<'var'>, sizes: Sizes | undefined, options: ExportOptions): string {
   const font = `15px ${MONO}`;
   const content = `${el.name} = ${el.value}`;
@@ -757,6 +782,8 @@ function drawPlaced(doc: BoardDoc, el: Placed, sizes: Sizes | undefined, options
       return drawPointer(doc, el, options);
     case 'var':
       return drawVar(el, sizes, options);
+    case 'complexity':
+      return drawComplexity(el, options);
     case 'text':
       return drawText(el, sizes, options);
     case 'shape':

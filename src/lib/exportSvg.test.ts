@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { boardToSvg, estimateWidth, wrapText } from './exportSvg';
 import { createElement, EMPTY_DOC, type BoardDoc, type ElementOf } from './model';
 
-const texts = { heading: 'Title', text: 'Text', sticky: 'Idea' };
+const texts = { heading: 'Title', text: 'Text', sticky: 'Idea', complexity: 'Complexity' };
 const options = { measure: estimateWidth, front: 'front', back: 'back' };
 
 describe('exporting a whiteboard', () => {

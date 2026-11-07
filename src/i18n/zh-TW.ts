@@ -60,7 +60,7 @@ export const zhTW = {
     saving: '儲存中…',
     tooLarge: '白板太大了，雲端同步可能會失敗。擦掉一些筆跡試試。',
     palette: '元件',
-    paletteHint: '點一下加到畫面中間，或拖到想放的位置。',
+    paletteHint: '點一下或拖曳。',
     groups: { templates: '模板', linear: '線性', nodes: '節點', lookup: '查表', notes: '筆記' },
     templates: {
       twoPointers: { name: '雙指標', hint: '陣列加 l、r' },
@@ -107,8 +107,9 @@ export const zhTW = {
       bits: '位元',
       unionFind: '並查集',
       trie: '字典樹',
+      complexity: '複雜度',
     },
-    defaults: { heading: '標題', text: '文字', sticky: '想法…' },
+    defaults: { heading: '標題', text: '文字', sticky: '想法…', complexity: '複雜度' },
     empty: '從元件庫點一下或拖一個元件進來，把腦中的想法畫出來。',
     canvasLabel: '白板畫布',
     toolbarLabel: '工具',
@@ -170,6 +171,10 @@ export const zhTW = {
       stop: '結束播放',
     },
     tips: [
+      {
+        title: '複雜度',
+        body: '寫下時間和空間複雜度，各配一句理由，就像講解最後的總結。打 n^2、2^n 會顯示成 n²、2ⁿ，輸入框也會建議常見的答案。把標題改成「暴力解」「最佳解」，放兩塊並排比較。',
+      },
       {
         title: '陣列和指標',
         body: '把指標拖到陣列下方會吸附到格子上；先選陣列再點「指標」，指標會放在第一格。點一格可以單獨選它：上底色、加指標、插入或刪除格子。選取陣列時，最後面的「＋」多加一格。',
@@ -455,6 +460,14 @@ export const zhTW = {
     cellLabel: (index: number) => `第 ${index} 格`,
     tableCellLabel: (row: number, col: number) => `第 ${row} 列第 ${col} 欄`,
     varName: '變數名稱',
+    complexity: {
+      title: '複雜度的標題',
+      time: '時間',
+      space: '空間',
+      why: '為什麼？',
+      missing: 'O(?)',
+      describe: (title: string, time: string, space: string) => `${title}：時間 ${time}，空間 ${space}`,
+    },
     varValue: '變數的值',
     pointerName: '指標名稱',
     pointerAt: (name: string, index: number) => `指標 ${name}，指在第 ${index} 格`,

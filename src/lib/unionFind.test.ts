@@ -21,7 +21,7 @@ import {
   type UnionFind,
 } from './unionFind';
 
-const texts = { heading: 'Title', text: 'Text', sticky: 'Idea' };
+const texts = { heading: 'Title', text: 'Text', sticky: 'Idea', complexity: 'Complexity' };
 
 function ufDoc(parent?: number[], rank?: number[]): BoardDoc {
   const el = createElement('unionFind', { x: 0, y: 0 }, 'u', texts) as UnionFind;

@@ -28,7 +28,7 @@ import {
 } from './model';
 import { applyStructureText, parseGraph, serializeGraph } from './structures';
 
-const texts = { heading: 'Title', text: 'Text', sticky: 'Idea' };
+const texts = { heading: 'Title', text: 'Text', sticky: 'Idea', complexity: 'Complexity' };
 
 function graphDoc(patch: Partial<ElementOf<'graph'>> = {}): BoardDoc {
   return addElement(EMPTY_DOC, { ...createElement('graph', { x: 0, y: 0 }, 'g', texts), ...patch } as ElementOf<'graph'>);

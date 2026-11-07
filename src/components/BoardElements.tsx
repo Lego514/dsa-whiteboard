@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { backspaceEdit, highlightPython, indentEdit, newlineEdit, type CodeEdit } from '../lib/code';
+import { COMMON_BIG_O, formatBigO } from '../lib/complexity';
 import { useI18n } from '../i18n';
 import {
   activeAt,
@@ -192,6 +193,8 @@ function Body({ el, editing, onChange, onDoneEditing, ...rest }: BodyProps) {
       return <TableBody el={el} editing={editing} onChange={onChange} onDoneEditing={onDoneEditing} {...rest} />;
     case 'var':
       return <VarBody el={el} editing={editing} onChange={onChange} onDoneEditing={onDoneEditing} />;
+    case 'complexity':
+      return <ComplexityBody el={el} editing={editing} onChange={onChange} onDoneEditing={onDoneEditing} />;
     case 'node':
       return <NodeBody el={el} editing={editing} onChange={onChange} onDoneEditing={onDoneEditing} />;
     case 'pointer':
@@ -1308,6 +1311,81 @@ function TableBody({ el, editing, onChange, onDoneEditing, onAddRow, onAddCol }:
   );
 }
 
+/**
+ * 複雜度區塊：標題，下面時間、空間各一列（答案和一句理由）。
+ * 答案顯示時整理成 O(n²) 這種寫法；編輯時輸入框會建議常見的答案
+ */
+function ComplexityBody({ el, editing, onChange, onDoneEditing }: { el: ElementOf<'complexity'> } & Omit<BodyProps, 'el' | 'snapIndex'>) {
+  const { t } = useI18n();
+  const c = t.board.complexity;
+  const suggestions = `board-big-o-${el.id}`;
+  const rows = [
+    { label: c.time, value: el.time, why: el.timeWhy, set: (time: string) => onChange({ time }), setWhy: (timeWhy: string) => onChange({ timeWhy }) },
+    { label: c.space, value: el.space, why: el.spaceWhy, set: (space: string) => onChange({ space }), setWhy: (spaceWhy: string) => onChange({ spaceWhy }) },
+  ];
+  if (!editing) {
+    return (
+      <div className="board-complexity">
+        <div className="board-complexity-title">{el.title}</div>
+        {rows.map((row) => (
+          <div key={row.label} className="board-complexity-row">
+            <span className="board-complexity-label">{row.label}</span>
+            <span className="board-complexity-value" data-empty={!row.value.trim() || undefined}>
+              {formatBigO(row.value) || c.missing}
+            </span>
+            <span className="board-complexity-why" title={row.why}>
+              {row.why}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className="board-complexity">
+      <input
+        className="board-complexity-title board-complexity-input"
+        value={el.title}
+        aria-label={c.title}
+        maxLength={40}
+        onChange={(e) => onChange({ title: e.target.value })}
+        onKeyDown={editKeys(onDoneEditing)}
+      />
+      {rows.map((row, i) => (
+        <div key={row.label} className="board-complexity-row">
+          <span className="board-complexity-label">{row.label}</span>
+          <input
+            className="board-complexity-value board-complexity-input"
+            value={row.value}
+            aria-label={row.label}
+            placeholder={c.missing}
+            maxLength={40}
+            list={suggestions}
+            // 剛加進來就從時間開始填
+            autoFocus={i === 0}
+            onChange={(e) => row.set(e.target.value)}
+            onKeyDown={editKeys(onDoneEditing)}
+          />
+          <input
+            className="board-complexity-why board-complexity-input"
+            value={row.why}
+            aria-label={`${row.label}: ${c.why}`}
+            placeholder={c.why}
+            maxLength={120}
+            onChange={(e) => row.setWhy(e.target.value)}
+            onKeyDown={editKeys(onDoneEditing)}
+          />
+        </div>
+      ))}
+      <datalist id={suggestions}>
+        {COMMON_BIG_O.map((answer) => (
+          <option key={answer} value={answer} />
+        ))}
+      </datalist>
+    </div>
+  );
+}
+
 function VarBody({ el, editing, onChange, onDoneEditing }: { el: ElementOf<'var'> } & Omit<BodyProps, 'el' | 'snapIndex'>) {
   const { t } = useI18n();
   if (!editing) {
@@ -1441,6 +1519,12 @@ function describe(el: Placed, doc: BoardDoc, t: ReturnType<typeof useI18n>['t'])
       return `${t.board.kinds[el.variant]} ${el.label}: ${el.rows.map((r) => r.join(' ')).join('; ')}`;
     case 'var':
       return `${t.board.kinds.var} ${el.name} = ${el.value}`;
+    case 'complexity': {
+      const c = t.board.complexity;
+      const time = formatBigO(el.time) || c.missing;
+      const space = formatBigO(el.space) || c.missing;
+      return `${t.board.kinds.complexity} ${c.describe(el.title, time, space)}`;
+    }
     case 'node':
       return `${t.board.kinds[el.variant === 'tree' ? 'treeNode' : el.variant === 'list' ? 'listNode' : 'graphNode']} ${el.value}`;
     case 'pointer': {

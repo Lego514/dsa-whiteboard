@@ -51,7 +51,7 @@ describe('tracing code line by line', () => {
   });
 
   it('sizes the box to the code: the longest line and the number of lines', () => {
-    const fresh = createElement('code', { x: 0, y: 0 }, 'c', { heading: 'Title', text: 'Text', sticky: 'Idea' }) as ElementOf<'text'>;
+    const fresh = createElement('code', { x: 0, y: 0 }, 'c', { heading: 'Title', text: 'Text', sticky: 'Idea', complexity: 'Complexity' }) as ElementOf<'text'>;
     expect(codeSize(fresh)).toEqual({ w: 399, h: 166 });
     expect(codeSize(code(codeDoc('x'))).w).toBe(220);
     expect(codeSize(code(codeDoc('y'.repeat(200)))).w).toBe(880);

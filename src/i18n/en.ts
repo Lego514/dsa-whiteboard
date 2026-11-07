@@ -61,7 +61,7 @@ export const en: Messages = {
     saving: 'Saving…',
     tooLarge: 'This whiteboard is too large to sync. Try erasing some ink.',
     palette: 'Elements',
-    paletteHint: 'Click to add one in the middle, or drag it where you want it.',
+    paletteHint: 'Click or drag.',
     groups: { templates: 'Templates', linear: 'Linear', nodes: 'Nodes', lookup: 'Lookup', notes: 'Notes' },
     templates: {
       twoPointers: { name: 'Two pointers', hint: 'Array with l and r' },
@@ -108,8 +108,9 @@ export const en: Messages = {
       bits: 'Bits',
       unionFind: 'Union-Find',
       trie: 'Trie',
+      complexity: 'Complexity',
     },
-    defaults: { heading: 'Heading', text: 'Text', sticky: 'Idea…' },
+    defaults: { heading: 'Heading', text: 'Text', sticky: 'Idea…', complexity: 'Complexity' },
     empty: 'Click or drag in an element from the panel and sketch what you’re thinking.',
     canvasLabel: 'Whiteboard canvas',
     toolbarLabel: 'Tools',
@@ -171,6 +172,10 @@ export const en: Messages = {
       stop: 'Stop playback',
     },
     tips: [
+      {
+        title: 'Complexity',
+        body: 'Write the time and space complexity with one reason each, the way you would end an explanation. Type n^2 or 2^n and it shows as n² or 2ⁿ; the input also suggests common answers. Rename the title to Brute force or Optimal and put two side by side to compare.',
+      },
       {
         title: 'Arrays and pointers',
         body: 'Drop a pointer below an array to snap it to a cell; select an array first and click Pointer to put one on the first cell. Click a cell to select just that cell: highlight it, add a pointer, or insert or delete cells. With an array selected, the + at the end adds a cell.',
@@ -456,6 +461,14 @@ export const en: Messages = {
     cellLabel: (index) => `Cell ${index}`,
     tableCellLabel: (row, col) => `Row ${row}, column ${col}`,
     varName: 'Variable name',
+    complexity: {
+      title: 'Complexity title',
+      time: 'Time',
+      space: 'Space',
+      why: 'Why?',
+      missing: 'O(?)',
+      describe: (title: string, time: string, space: string) => `${title}: time ${time}, space ${space}`,
+    },
     varValue: 'Variable value',
     pointerName: 'Pointer name',
     pointerAt: (name, index) => `Pointer ${name} at index ${index}`,

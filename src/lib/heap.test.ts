@@ -25,7 +25,7 @@ import {
 } from './model';
 import { applyStructureText } from './structures';
 
-const texts = { heading: 'Title', text: 'Text', sticky: 'Idea' };
+const texts = { heading: 'Title', text: 'Text', sticky: 'Idea', complexity: 'Complexity' };
 
 function heapDoc(items?: string[]): BoardDoc {
   const base = createElement('heap', { x: 0, y: 0 }, 'h', texts) as ElementOf<'list'>;

@@ -21,7 +21,7 @@ import {
   type ElementOf,
 } from './model';
 
-const texts = { heading: 'Title', text: 'Text', sticky: 'Idea' };
+const texts = { heading: 'Title', text: 'Text', sticky: 'Idea', complexity: 'Complexity' };
 
 /** 陣列 s 上有 l（第 0 格）和 r（第 2 格），範圍框框住它們之間 */
 function framed(): BoardDoc {

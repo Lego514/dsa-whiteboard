@@ -108,6 +108,8 @@ interface PlaybackBarProps {
   onCaptionEnd: () => void;
   /** 講解中：說明只能看（當作提詞），下方換成講解的計時和「講完了」 */
   explain?: ReactNode;
+  /** 做好的步驟（例如參考板書）：說明只能看、會換行，沒有「從這步繼續編輯」和「刪除這一步」 */
+  readOnly?: boolean;
 }
 
 /** 播放時下方的播放列：換步、自動播放、這一步的說明、從這步繼續編輯 */
@@ -124,6 +126,7 @@ export function PlaybackBar({
   onCaption,
   onCaptionEnd,
   explain,
+  readOnly = false,
 }: PlaybackBarProps) {
   const { t } = useI18n();
   const s = t.board.steps;
@@ -162,12 +165,21 @@ export function PlaybackBar({
           ))}
         </ol>
       </div>
-      {explain ? (
-        steps[index].caption && (
-          <p className="board-playback-notes" lang="en">
-            {steps[index].caption}
-          </p>
-        )
+      {explain || readOnly ? (
+        <>
+          {steps[index].caption && (
+            <p className="board-playback-notes" lang="en">
+              {steps[index].caption}
+            </p>
+          )}
+          {readOnly && !explain && (
+            <div className="board-playback-row board-playback-actions">
+              <button type="button" className="btn btn-small btn-primary" onClick={onExit}>
+                {s.exit}
+              </button>
+            </div>
+          )}
+        </>
       ) : (
         <>
           <input

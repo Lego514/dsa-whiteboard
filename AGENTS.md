@@ -62,6 +62,7 @@ e2e/            Playwright；collab.spec.ts 用兩個瀏覽器測一起編輯
 - **`model.ts` 和 `bits.ts`、`unionFind.ts`、`trie.ts` 互相引用**：這些檔案的頂層（常數、`const x = ...`）不能用到 model 的值，只能在函式裡用，不然看誰先載入，會讀到還沒初始化的值。
 - **一起編輯的同步規則**：每個元件為單位，伺服器收到的順序決定誰贏（last-write-wins）；自己還沒被確認的修改，不套用別人對同一個元件的修改；復原只退回自己的動作（別人的修改會套進復原紀錄的每個版本）。改這部分要跑 `src/collab/client.test.ts`（模擬網路的收斂測試）。
 - **共用伺服器只接受 `wrangler.jsonc` 裡 `ALLOWED_ORIGINS` 列的網址**；新的網站要用共用，就加在這裡。
+- **`readOnlySteps`、`startAtStep`**（v0.1.18）：給做好的步驟用（刷題教練的參考板書）。`readOnlySteps` 讓播放列的說明變成會換行的文字、拿掉「從這步繼續編輯」「刪除這一步」，只留「停止播放」；`startAtStep` 一打開就從那一步播放。
 - **`example` 屬性**（v0.1.17）：使用的一方給這一題的範例（LeetCode Input 的寫法），白板是空的時候，空白提示下面有「放上這題的範例」按鈕，跟「貼上範例」用同一個 `drawExample`。`insertExample`、`splitExample` 也從套件匯出，給使用的一方先檢查自己的範例畫不畫得出來（刷題教練的題庫測試）。
 - **複雜度區塊**（`complexity` 元件，v0.1.16）：標題、時間、空間各一個答案和一句理由，固定大小（`COMPLEXITY_W/H`，理由太長畫面上省略）。答案存使用者打的字，顯示和匯出經過 `formatBigO`（`lib/complexity.ts`：n^2 → n²、沒寫 O( 的包上）；編輯時輸入框用 `datalist` 建議 `COMMON_BIG_O`（所以它的 role 是 combobox）。答案預設空白，不先給答案。
 - **標題列**：`actions` 是一直看得到的按鈕（共用）；`menu`（`HeaderMenuItem[]`，語言、深淺色、原始碼連結）在寬的畫面排成一排小圖示，560px 以下跟匯出圖片一起收進右上角的「⋯」選單（`components/HeaderMenu.tsx`），存檔狀態移到標題上面那行小字，標題才放得下。關閉只放一個 ×（名稱還是「關閉」）。e2e 用 `headerButton()` 找這些按鈕，手機上會先打開選單。

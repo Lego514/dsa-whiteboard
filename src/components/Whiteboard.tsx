@@ -147,6 +147,10 @@ export interface WhiteboardProps<R = unknown> {
    * 白板是空的時候，空白提示下面有一個按鈕把它畫出來，跟「貼上範例」一樣
    */
   example?: string;
+  /** 步驟是做好的（例如參考板書）：播放時說明只能看、會換行，不能從某一步繼續編輯或刪掉步驟 */
+  readOnlySteps?: boolean;
+  /** 一打開就從這一步開始播放（從 0 數）；沒給就是一般的編輯畫面 */
+  startAtStep?: number;
   /** 存好之後顯示的文字；沒給就是「已存在這台裝置」。共用時改成顯示連線狀態 */
   savedLabel?: string;
   locale?: Locale;
@@ -182,6 +186,8 @@ function Editor<R>({
   actions,
   menu = [],
   example,
+  readOnlySteps = false,
+  startAtStep,
   savedLabel,
   onClose,
   exportName = 'whiteboard',
@@ -222,7 +228,7 @@ function Editor<R>({
   /** 手機上顏色收成一顆，點了才展開 */
   const [colorsOpen, setColorsOpen] = useState(false);
   /** 正在播放第幾步；null 是一般編輯 */
-  const [playing, setPlaying] = useState<number | null>(null);
+  const [playing, setPlaying] = useState<number | null>(startAtStep ?? null);
   const [autoPlay, setAutoPlay] = useState(false);
   /** 講解模式：播放時一邊講一邊錄音；講完是那次的結果 */
   const [explaining, setExplaining] = useState(false);
@@ -1764,6 +1770,7 @@ function Editor<R>({
               onCaption={(caption) => setHistory((h) => m.replace(h, m.setStepCaption(h.present, playIndex, caption)))}
               onCaptionEnd={() => setHistory((h) => m.dropEmptyCheckpoint(h))}
               explain={explaining && Session && <Session index={playIndex} stepCount={steps.length} finishRef={finishExplain} onFinish={endExplain} />}
+              readOnly={readOnlySteps}
             />
           )}
 

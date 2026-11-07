@@ -24,7 +24,7 @@ import {
 } from './model';
 import { applyStructureText, parseDp, serializeDp } from './structures';
 
-const texts = { heading: 'Title', text: 'Text', sticky: 'Idea' };
+const texts = { heading: 'Title', text: 'Text', sticky: 'Idea', complexity: 'Complexity' };
 
 /** 元件庫的預設內容：LCS("abcde", "ace")，邊界填好 0，正在填 dp[1][1] */
 function lcsDoc(): BoardDoc {

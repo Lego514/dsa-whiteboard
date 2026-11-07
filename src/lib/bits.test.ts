@@ -5,7 +5,7 @@ import { boardToSvg, estimateWidth } from './exportSvg';
 import { createElement, findElement, isIndexed, type BoardDoc } from './model';
 import { applyStructureText } from './structures';
 
-const texts = { heading: 'Title', text: 'Text', sticky: 'Idea' };
+const texts = { heading: 'Title', text: 'Text', sticky: 'Idea', complexity: 'Complexity' };
 
 function bitsDoc(items?: string[]): BoardDoc {
   const el = createElement('bits', { x: 0, y: 0 }, 'b', texts) as BitsList;

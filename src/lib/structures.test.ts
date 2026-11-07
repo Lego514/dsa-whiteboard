@@ -43,7 +43,7 @@ import {
 } from './model';
 import { applyStructureText, parseLinkedList, parseTree, serializeTree, structureText } from './structures';
 
-const texts = { heading: 'Title', text: 'Text', sticky: 'Idea' };
+const texts = { heading: 'Title', text: 'Text', sticky: 'Idea', complexity: 'Complexity' };
 
 function linkedDoc(items = ['1', '2', '3', '4']): BoardDoc {
   return addElement(EMPTY_DOC, { ...createElement('linkedList', { x: 0, y: 0 }, 'll', texts), items } as ElementOf<'list'>);

@@ -1,9 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
 
-/** 標題列可以收起來的按鈕（匯出、語言、深淺色）：手機上要先打開「⋯」選單 */
+/**
+ * 標題列可以收起來的按鈕（匯出、語言、深淺色）：560px 以下收進「⋯」選單，要先打開。
+ * 看畫面寬度決定，不看「⋯」現在看不看得到：頁面剛載入時它還沒畫出來
+ */
 async function headerButton(page: Page, name: string) {
-  const more = page.getByRole('button', { name: 'More', exact: true });
-  if (await more.isVisible()) await more.click();
+  if ((page.viewportSize()?.width ?? 1280) <= 560) await page.getByRole('button', { name: /^(More|更多)$/ }).click();
   return page.getByRole('button', { name, exact: true });
 }
 
@@ -252,6 +254,28 @@ test('colors text, picks up a pencil stroke, and labels a dict', async ({ page, 
   const dict = page.getByRole('group', { name: /^Dict count/ });
   await expect(dict.locator('.board-col-indices')).toHaveText('keyvalue');
   await expect(page.getByRole('toolbar', { name: 'Selected element' }).getByRole('button', { name: 'Remove column' })).toHaveCount(0);
+});
+
+test('adds a complexity block, fills it from suggestions or shorthand, and reads it back', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Complexity', exact: true }).click();
+  // 加進來就從時間開始填，答案是空的；有建議清單的輸入框是 combobox
+  const time = page.getByRole('combobox', { name: 'Time', exact: true });
+  await expect(time).toBeFocused();
+  await expect(time).toHaveAttribute('list', /board-big-o-/);
+  await time.fill('n');
+  await page.getByRole('textbox', { name: 'Time: Why?' }).fill('each number is seen once');
+  await page.getByRole('combobox', { name: 'Space', exact: true }).fill('n^2');
+  await page.keyboard.press('Enter');
+  const block = page.getByRole('group', { name: /^Complexity / });
+  await expect(block).toHaveAccessibleName('Complexity Complexity: time O(n), space O(n²)');
+  await expect(block).toContainText('each number is seen once');
+
+  // 標題改成「Brute force」，再放一塊比較
+  await block.dblclick();
+  await page.getByRole('textbox', { name: 'Complexity title' }).fill('Brute force');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('group', { name: /^Complexity Brute force:/ })).toBeVisible();
 });
 
 test('clears recorded steps with the canvas unless you keep them, and starts again at 100%', async ({ page, isMobile }) => {

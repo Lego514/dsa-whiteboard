@@ -47,6 +47,16 @@ export const boardElementSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('table'), ...placed, variant: z.enum(['dict', 'grid', 'table']), label: text(40), rows: z.array(z.array(cell).max(26)).min(1).max(26) }),
   z.object({ type: z.literal('var'), ...placed, name: text(40), value: text(80) }),
+  /** 複雜度區塊：標題（可以改成「暴力解」「最佳解」並排比較）、時間和空間各一個答案和一句理由 */
+  z.object({
+    type: z.literal('complexity'),
+    ...placed,
+    title: text(40),
+    time: text(40),
+    timeWhy: text(120),
+    space: text(40),
+    spaceWhy: text(120),
+  }),
   /** 二元樹：依層序存，第 i 個節點的子節點是 2i+1 和 2i+2，null 是沒有節點；最多 6 層 */
   z.object({
     type: z.literal('tree'),

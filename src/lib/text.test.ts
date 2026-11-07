@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { addElement, addPointerAt, createElement, EMPTY_DOC, findElement, type BoardDoc, type ElementOf } from './model';
 import { applyStructureText, parseDict, parseGrid, parseList, splitName, structureText } from './structures';
 
-const texts = { heading: 'Title', text: 'Text', sticky: 'Idea' };
+const texts = { heading: 'Title', text: 'Text', sticky: 'Idea', complexity: 'Complexity' };
 
 function docWith(kind: Parameters<typeof createElement>[0]): BoardDoc {
   return addElement(EMPTY_DOC, createElement(kind, { x: 0, y: 0 }, 'e', texts));

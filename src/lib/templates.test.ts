@@ -3,7 +3,7 @@ import { boardDocSchema } from '../schema';
 import { addElement, createElement, EMPTY_DOC, findElement, isPlaced, rectOf, type BoardDoc, type ElementOf } from './model';
 import { insertTemplate, TEMPLATES, templateElements } from './templates';
 
-const texts = { heading: 'Title', text: 'Text', sticky: 'Idea' };
+const texts = { heading: 'Title', text: 'Text', sticky: 'Idea', complexity: 'Complexity' };
 
 function counter() {
   let n = 0;

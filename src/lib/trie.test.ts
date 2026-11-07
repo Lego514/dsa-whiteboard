@@ -5,7 +5,7 @@ import { createElement, findElement, recordHeapSteps, sizeOf, type BoardDoc } fr
 import { applyStructureText, structureText } from './structures';
 import { canInsert, parseTrie, setTrieAt, trieInsert, trieLayout, trieNodes, triePath, trieRemove, trieSearch, trieSearchSteps, type Trie } from './trie';
 
-const texts = { heading: 'Title', text: 'Text', sticky: 'Idea' };
+const texts = { heading: 'Title', text: 'Text', sticky: 'Idea', complexity: 'Complexity' };
 
 function trieDoc(words?: string[]): BoardDoc {
   const el = createElement('trie', { x: 0, y: 0 }, 't', texts) as Trie;

@@ -41,6 +41,9 @@ export const LIST_NODE_W = 76;
 export const LIST_NODE_H = 44;
 /** 鏈結串列兩個節點之間留給連線箭頭的空間 */
 export const LINK_GAP = 28;
+/** 複雜度區塊：固定大小，理由太長時畫面上省略（滑鼠停上去看得到全文） */
+export const COMPLEXITY_W = 360;
+export const COMPLEXITY_H = 104;
 /** 鏈結串列尾端的「→ null」 */
 export const NULL_W = 36;
 /** 鏈結串列有環時，節點下方畫回頭箭頭的空間 */
@@ -178,6 +181,8 @@ export function sizeOf(el: Placed, measured?: { w: number; h: number }): { w: nu
       return measured ?? { w: el.w, h: el.variant === 'heading' ? 36 : 44 };
     case 'var':
       return measured ?? { w: 110, h: 36 };
+    case 'complexity':
+      return { w: COMPLEXITY_W, h: COMPLEXITY_H };
     case 'shape':
       return { w: el.w, h: el.h };
   }
@@ -359,6 +364,7 @@ export type PaletteKind =
   | 'set'
   | 'grid'
   | 'var'
+  | 'complexity'
   | 'binaryTree'
   | 'linkedList'
   | 'graph'
@@ -384,11 +390,11 @@ export const PALETTE: { group: PaletteGroup; kinds: PaletteKind[] }[] = [
   { group: 'linear', kinds: ['array', 'pointer', 'stack', 'queue', 'intervals', 'bits'] },
   { group: 'nodes', kinds: ['binaryTree', 'linkedList', 'graph', 'heap', 'recursionTree', 'unionFind', 'trie'] },
   { group: 'lookup', kinds: ['dict', 'set', 'grid', 'dpTable', 'table'] },
-  { group: 'notes', kinds: ['text', 'code', 'sticky', 'var'] },
+  { group: 'notes', kinds: ['text', 'code', 'sticky', 'var', 'complexity'] },
 ];
 
 /** 文字類元件的預設內容依介面語言 */
-export type DefaultTexts = Record<'heading' | 'text' | 'sticky', string>;
+export type DefaultTexts = Record<'heading' | 'text' | 'sticky' | 'complexity', string>;
 
 export function newId(doc: BoardDoc): string {
   const taken = new Set(doc.elements.map((el) => el.id));
@@ -433,6 +439,9 @@ export function createElement(kind: PaletteKind, at: Point, id: string, texts: D
       return { type: 'table', ...placed, variant: 'table', label: '', rows: [['i', 'j', 'ans'], ['', '', '']] };
     case 'var':
       return { type: 'var', ...placed, name: 'ans', value: '0' };
+    case 'complexity':
+      // 答案留空：自己想，不先給答案
+      return { type: 'complexity', ...placed, title: texts.complexity, time: '', timeWhy: '', space: '', spaceWhy: '' };
     case 'linkedList':
       return { type: 'list', ...placed, variant: 'linked', label: 'head', items: ['1', '2', '3'] };
     case 'heap':

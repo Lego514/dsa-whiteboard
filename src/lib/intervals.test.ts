@@ -24,7 +24,7 @@ import {
 } from './model';
 import { applyStructureText, parseIntervals, serializeIntervals } from './structures';
 
-const texts = { heading: 'Title', text: 'Text', sticky: 'Idea' };
+const texts = { heading: 'Title', text: 'Text', sticky: 'Idea', complexity: 'Complexity' };
 
 /** 元件庫的預設內容：[1,3] [2,6] [8,10] [15,18] */
 function mergeDoc(): BoardDoc {

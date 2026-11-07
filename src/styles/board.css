@@ -641,32 +641,40 @@ input.board-cell-input:focus {
 
 /* 變數 */
 /* 複雜度區塊：標題，下面時間、空間各一列（答案、理由） */
+/* 三欄共用一個 grid：答案欄跟著比較長的答案，剩下的寬度給理由，理由太長就換行（exportSvg 的 drawComplexity 照同樣的尺寸畫） */
 .board-complexity {
   box-sizing: border-box;
   display: grid;
-  grid-template-rows: 22px 32px 32px;
-  align-content: center;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: start;
+  column-gap: 14px;
   width: 100%;
-  height: 100%;
-  padding: 6px 12px;
+  min-height: 104px;
+  padding: 8px 12px;
   border: 1px solid var(--ink-3);
   border-radius: 10px;
   background: var(--sheet);
 }
 
 .board-complexity-title {
+  grid-column: 1 / -1;
   overflow: hidden;
   font-size: 13px;
   font-weight: 700;
+  line-height: 22px;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .board-complexity-row {
-  display: grid;
-  grid-template-columns: 50px 96px minmax(0, 1fr);
-  align-items: center;
-  gap: 0;
+  display: contents;
+}
+
+.board-complexity-label,
+.board-complexity-value,
+.board-complexity-why {
+  padding: 7px 0;
+  line-height: 18px;
 }
 
 .board-complexity-label {
@@ -675,6 +683,7 @@ input.board-cell-input:focus {
 }
 
 .board-complexity-value {
+  max-width: 140px;
   overflow: hidden;
   font-family: var(--font-mono);
   font-size: 15px;
@@ -689,17 +698,16 @@ input.board-cell-input:focus {
 }
 
 .board-complexity-why {
-  overflow: hidden;
   color: var(--ink-2);
   font-size: 13px;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
 .board-complexity-input {
   box-sizing: border-box;
   min-width: 0;
   height: 26px;
+  margin: 3px 0;
   padding: 0 6px;
   border: 1px solid var(--rule-strong);
   border-radius: 6px;
@@ -707,8 +715,12 @@ input.board-cell-input:focus {
   color: var(--ink);
 }
 
-.board-complexity-row .board-complexity-input {
-  margin-right: 6px;
+.board-complexity-title.board-complexity-input {
+  margin: 0 0 2px;
+}
+
+.board-complexity-value.board-complexity-input {
+  width: 96px;
 }
 
 .board-var {

@@ -270,6 +270,19 @@ test('adds a complexity block, fills it from suggestions or shorthand, and reads
   const block = page.getByRole('group', { name: /^Complexity / });
   await expect(block).toHaveAccessibleName('Complexity Complexity: time O(n), space O(n²)');
   await expect(block).toContainText('each number is seen once');
+  const before = (await block.boundingBox())!;
+
+  // 理由很長：換行整句都看得到，整塊往下長，寬度不變
+  await block.dblclick();
+  const long = 'a = amount, c = coins: each amount tries every coin once';
+  await page.getByRole('textbox', { name: 'Time: Why?' }).fill(long);
+  await page.keyboard.press('Enter');
+  const why = block.locator('.board-complexity-why').first();
+  await expect(why).toHaveText(long);
+  expect(await why.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+  const after = (await block.boundingBox())!;
+  expect(after.height).toBeGreaterThan(before.height);
+  expect(after.width).toBeCloseTo(before.width);
 
   // 標題改成「Brute force」，再放一塊比較
   await block.dblclick();

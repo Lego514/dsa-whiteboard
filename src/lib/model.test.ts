@@ -398,20 +398,35 @@ describe('complexity block', () => {
     const block = createElement('complexity', { x: 10, y: 20 }, 'c', texts);
     expect(block).toEqual({ type: 'complexity', id: 'c', x: 10, y: 20, title: 'Complexity', time: '', timeWhy: '', space: '', spaceWhy: '' });
     expect(sizeOf(block)).toEqual({ w: COMPLEXITY_W, h: COMPLEXITY_H });
+    // 理由換行時畫面量到比較高，寬度不變；量到的比預設矮也不會縮
+    expect(sizeOf(block, { w: 999, h: 140 })).toEqual({ w: COMPLEXITY_W, h: 140 });
+    expect(sizeOf(block, { w: 999, h: 60 })).toEqual({ w: COMPLEXITY_W, h: COMPLEXITY_H });
     expect(boardDocSchema.safeParse({ elements: [block] }).success).toBe(true);
     expect(PALETTE.find((g) => g.group === 'notes')?.kinds).toContain('complexity');
   });
 
-  it('exports the answers written out, an empty one as O(?), and cuts a long reason short', () => {
-    const block = {
-      ...(createElement('complexity', { x: 0, y: 0 }, 'c', texts) as ElementOf<'complexity'>),
-      time: 'n^2',
-      timeWhy: 'two nested loops over every pair of numbers in the input array, which is slow',
-    };
+  it('exports the answers written out, an empty one as O(?), and wraps a long reason instead of cutting it', () => {
+    const why = 'two nested loops over every pair of numbers in the input array, which is slow';
+    const block = { ...(createElement('complexity', { x: 0, y: 0 }, 'c', texts) as ElementOf<'complexity'>), time: 'n^2', timeWhy: why };
     const svg = boardToSvg({ elements: [block] }, undefined, { measure: estimateWidth, front: 'f', back: 'b' })!.svg;
     expect(svg).toContain('>O(n²)</text>');
     expect(svg).toContain('>O(?)</text>');
-    expect(svg).toContain('…</text>');
+    expect(svg).not.toContain('…</text>');
+    // 理由分成好幾行，每個字都在；整塊比只有一行時高
+    const lines = [...svg.matchAll(/font-size="13" fill="[^"]+" dominant-baseline="middle">([^<]+)<\/text>/g)].map((m) => m[1]).filter((line) => why.includes(line));
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines.join(' ')).toBe(why);
+    const height = Number(/<rect x="0" y="0" width="360" height="(\d+(?:\.\d+)?)"/.exec(svg)?.[1]);
+    expect(height).toBeGreaterThan(COMPLEXITY_H);
+  });
+
+  it('gives the reasons the room the answers leave, so a short answer means a wider reason', () => {
+    const base = createElement('complexity', { x: 0, y: 0 }, 'c', texts) as ElementOf<'complexity'>;
+    const reasonX = (time: string) => {
+      const svg = boardToSvg({ elements: [{ ...base, time, timeWhy: 'why' }] }, undefined, { measure: estimateWidth, front: 'f', back: 'b' })!.svg;
+      return Number(/<text x="(\d+(?:\.\d+)?)"[^>]*>why<\/text>/.exec(svg)?.[1]);
+    };
+    expect(reasonX('n')).toBeLessThan(reasonX('n log n'));
   });
 });
 

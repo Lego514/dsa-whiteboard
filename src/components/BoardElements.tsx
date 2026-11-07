@@ -7,6 +7,7 @@ import {
   CELL,
   CODE_GUTTER_W,
   colorVar,
+  COMPLEXITY_W,
   CYCLE_H,
   dpArrowPath,
   dpDependencies,
@@ -103,7 +104,8 @@ interface ElementViewProps {
 export function ElementView({ el, doc, selected, editing, register, ...rest }: ElementViewProps) {
   const { t } = useI18n();
   const at = el.type === 'pointer' ? pointerPosition(doc, el) : el;
-  const fixedSize = (el.type === 'text' && el.variant !== 'code') || el.type === 'var' ? undefined : sizeOf(el);
+  // 高度跟著內容長的元件不給固定大小，由 ResizeObserver 量；複雜度區塊只固定寬度
+  const fixedSize = (el.type === 'text' && el.variant !== 'code') || el.type === 'var' || el.type === 'complexity' ? undefined : sizeOf(el);
   // 指著鏈結串列左邊 null 的指標，順便畫出那個 null（位置相對於指標）
   const none = el.type === 'pointer' ? noneLabel(doc, el) : undefined;
   return (
@@ -122,7 +124,7 @@ export function ElementView({ el, doc, selected, editing, register, ...rest }: E
       style={{
         left: at.x,
         top: at.y,
-        ...(fixedSize ? { width: fixedSize.w, height: fixedSize.h } : el.type === 'text' ? { width: el.w } : {}),
+        ...(fixedSize ? { width: fixedSize.w, height: fixedSize.h } : el.type === 'text' ? { width: el.w } : el.type === 'complexity' ? { width: COMPLEXITY_W } : {}),
         // 文字換了顏色：畫面、編輯中的輸入框都用這個顏色
         ...(el.type === 'text' && el.color ? { color: colorVar(el.color) } : {}),
       }}
@@ -1312,7 +1314,8 @@ function TableBody({ el, editing, onChange, onDoneEditing, onAddRow, onAddCol }:
 }
 
 /**
- * 複雜度區塊：標題，下面時間、空間各一列（答案和一句理由）。
+ * 複雜度區塊：標題，下面時間、空間各一列（答案和一句理由）。三欄共用一個 grid，
+ * 答案欄跟著兩個答案裡比較長的那個，剩下的寬度都給理由；理由太長就換行，整塊往下長。
  * 答案顯示時整理成 O(n²) 這種寫法；編輯時輸入框會建議常見的答案
  */
 function ComplexityBody({ el, editing, onChange, onDoneEditing }: { el: ElementOf<'complexity'> } & Omit<BodyProps, 'el' | 'snapIndex'>) {
@@ -1333,9 +1336,7 @@ function ComplexityBody({ el, editing, onChange, onDoneEditing }: { el: ElementO
             <span className="board-complexity-value" data-empty={!row.value.trim() || undefined}>
               {formatBigO(row.value) || c.missing}
             </span>
-            <span className="board-complexity-why" title={row.why}>
-              {row.why}
-            </span>
+            <span className="board-complexity-why">{row.why}</span>
           </div>
         ))}
       </div>

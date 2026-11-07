@@ -645,24 +645,50 @@ function drawPointer(doc: BoardDoc, el: ElementOf<'pointer'>, options: ExportOpt
   ].join('');
 }
 
-/** 複雜度區塊：跟畫面一樣，標題加時間、空間兩列；理由放不下時加省略號 */
-function drawComplexity(el: ElementOf<'complexity'>, options: ExportOptions): string {
-  const parts = [rect(el.x, el.y, COMPLEXITY_W, COMPLEXITY_H, SHEET, INK_3, ' rx="10"')];
-  parts.push(text(el.x + 12, el.y + 18, fit(el.title, COMPLEXITY_W - 24, `bold 13px ${SANS}`, options.measure), { size: 13, bold: true }));
+// 複雜度區塊的尺寸，跟 board.css 的 .board-complexity 一樣
+const CX_PAD_X = 12;
+const CX_PAD_Y = 8;
+const CX_TITLE_H = 22;
+const CX_GAP = 14;
+const CX_LINE_H = 18;
+const CX_CELL_PAD = 7;
+const CX_VALUE_MAX = 140;
+
+/** 複雜度區塊：跟畫面一樣，標題加時間、空間兩列；答案欄跟著比較長的答案，理由放不下就換行，整塊往下長 */
+function drawComplexity(el: ElementOf<'complexity'>, sizes: Sizes | undefined, options: ExportOptions): string {
+  const labelFont = `13px ${SANS}`;
+  const valueFont = `bold 15px ${MONO}`;
   const rows = [
-    [options.complexity?.time ?? 'Time', el.time, el.timeWhy],
-    [options.complexity?.space ?? 'Space', el.space, el.spaceWhy],
-  ];
-  rows.forEach(([label, value, why], i) => {
-    const y = el.y + 50 + i * 32;
-    const answer = formatBigO(value) || (options.complexity?.missing ?? 'O(?)');
+    { label: options.complexity?.time ?? 'Time', value: el.time, why: el.timeWhy },
+    { label: options.complexity?.space ?? 'Space', value: el.space, why: el.spaceWhy },
+  ].map((row) => ({ ...row, answer: formatBigO(row.value) || (options.complexity?.missing ?? 'O(?)') }));
+  const labelW = Math.max(...rows.map((row) => options.measure(row.label, labelFont)));
+  const valueW = Math.min(CX_VALUE_MAX, Math.max(...rows.map((row) => options.measure(row.answer, valueFont))));
+  const whyX = el.x + CX_PAD_X + labelW + CX_GAP + valueW + CX_GAP;
+  const whyW = el.x + COMPLEXITY_W - CX_PAD_X - whyX;
+  const parts: string[] = [];
+  let y = el.y + CX_PAD_Y + CX_TITLE_H;
+  for (const row of rows) {
+    const lines = row.why.trim() ? wrapText(row.why, whyW, labelFont, options.measure) : [];
+    const first = y + CX_CELL_PAD + CX_LINE_H / 2;
     parts.push(
-      text(el.x + 12, y, label, { size: 13, color: INK_2 }),
-      text(el.x + 62, y, answer, { size: 15, mono: true, bold: true, color: value.trim() ? INK : INK_3 }),
-      text(el.x + 158, y, fit(why, COMPLEXITY_W - 170, `13px ${SANS}`, options.measure), { size: 13, color: INK_2 }),
+      text(el.x + CX_PAD_X, first, row.label, { size: 13, color: INK_2 }),
+      text(el.x + CX_PAD_X + labelW + CX_GAP, first, fit(row.answer, valueW, valueFont, options.measure), {
+        size: 15,
+        mono: true,
+        bold: true,
+        color: row.value.trim() ? INK : INK_3,
+      }),
+      ...lines.map((line, i) => text(whyX, first + i * CX_LINE_H, line, { size: 13, color: INK_2 })),
     );
-  });
-  return parts.join('');
+    y += CX_CELL_PAD * 2 + CX_LINE_H * Math.max(1, lines.length);
+  }
+  const h = Math.max(COMPLEXITY_H, sizes?.get(el.id)?.h ?? 0, y + CX_PAD_Y - el.y);
+  return [
+    rect(el.x, el.y, COMPLEXITY_W, h, SHEET, INK_3, ' rx="10"'),
+    text(el.x + CX_PAD_X, el.y + CX_PAD_Y + CX_TITLE_H / 2, fit(el.title, COMPLEXITY_W - CX_PAD_X * 2, `bold 13px ${SANS}`, options.measure), { size: 13, bold: true }),
+    ...parts,
+  ].join('');
 }
 
 function drawVar(el: ElementOf<'var'>, sizes: Sizes | undefined, options: ExportOptions): string {
@@ -783,7 +809,7 @@ function drawPlaced(doc: BoardDoc, el: Placed, sizes: Sizes | undefined, options
     case 'var':
       return drawVar(el, sizes, options);
     case 'complexity':
-      return drawComplexity(el, options);
+      return drawComplexity(el, sizes, options);
     case 'text':
       return drawText(el, sizes, options);
     case 'shape':

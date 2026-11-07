@@ -41,7 +41,7 @@ export const LIST_NODE_W = 76;
 export const LIST_NODE_H = 44;
 /** 鏈結串列兩個節點之間留給連線箭頭的空間 */
 export const LINK_GAP = 28;
-/** 複雜度區塊：固定大小，理由太長時畫面上省略（滑鼠停上去看得到全文） */
+/** 複雜度區塊：寬度固定，理由太長時換行、整塊往下長；COMPLEXITY_H 是兩列理由都只有一行時的高度 */
 export const COMPLEXITY_W = 360;
 export const COMPLEXITY_H = 104;
 /** 鏈結串列尾端的「→ null」 */
@@ -120,7 +120,7 @@ export function tableHeadH(el: ElementOf<'table'>): number {
 
 /**
  * 結構化元件的大小由內容決定，畫面照這個尺寸畫；
- * 文字和變數的高度會隨內容變，畫面量到的大小傳進 measured。
+ * 文字、變數和複雜度區塊的高度會隨內容變，畫面量到的大小傳進 measured。
  */
 export function sizeOf(el: Placed, measured?: { w: number; h: number }): { w: number; h: number } {
   switch (el.type) {
@@ -182,7 +182,7 @@ export function sizeOf(el: Placed, measured?: { w: number; h: number }): { w: nu
     case 'var':
       return measured ?? { w: 110, h: 36 };
     case 'complexity':
-      return { w: COMPLEXITY_W, h: COMPLEXITY_H };
+      return { w: COMPLEXITY_W, h: Math.max(COMPLEXITY_H, measured?.h ?? 0) };
     case 'shape':
       return { w: el.w, h: el.h };
   }

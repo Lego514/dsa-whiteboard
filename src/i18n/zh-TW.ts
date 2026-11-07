@@ -78,6 +78,7 @@ export const zhTW = {
       label: '題目的範例',
       placeholder: 'nums = [2,7,11,15], target = 9',
       draw: '畫出來',
+      useProblem: '放上這題的範例',
     },
     kinds: {
       heading: '標題',

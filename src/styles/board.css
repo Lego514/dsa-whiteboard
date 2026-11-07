@@ -444,12 +444,48 @@
   position: absolute;
   top: 40%;
   left: 50%;
-  max-width: 320px;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  width: min(360px, calc(100% - 32px));
   margin: 0;
   color: var(--ink-3);
   text-align: center;
   transform: translate(-50%, -50%);
   pointer-events: none;
+}
+
+.board-empty p {
+  margin: 0;
+}
+
+/* 裡面的東西可以縮到比內容窄，長的範例才不會把整塊撐出畫面 */
+.board-empty > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* 空白時「放上這題的範例」：按鈕上面是說明、下面用等寬字寫出要畫的是什麼。
+   選擇器多一層：使用的一方自己的 .btn 不會把它改回一行 */
+.board-empty .board-example {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 10px 14px;
+  white-space: normal;
+  pointer-events: auto;
+}
+
+.board-example-input {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 /* 元件 */

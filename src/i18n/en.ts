@@ -79,6 +79,7 @@ export const en: Messages = {
       label: 'Problem example',
       placeholder: 'nums = [2,7,11,15], target = 9',
       draw: 'Draw it',
+      useProblem: 'Put this problem’s example on the board',
     },
     kinds: {
       heading: 'Heading',

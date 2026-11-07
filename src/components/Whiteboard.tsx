@@ -142,6 +142,11 @@ export interface WhiteboardProps<R = unknown> {
    * 手機上跟匯出圖片一起收進右上角的「⋯」選單
    */
   menu?: readonly HeaderMenuItem[];
+  /**
+   * 這一題的範例，用 LeetCode Input 的寫法（例如 nums = [2,7,11,15], target = 9）：
+   * 白板是空的時候，空白提示下面有一個按鈕把它畫出來，跟「貼上範例」一樣
+   */
+  example?: string;
   /** 存好之後顯示的文字；沒給就是「已存在這台裝置」。共用時改成顯示連線狀態 */
   savedLabel?: string;
   locale?: Locale;
@@ -176,6 +181,7 @@ function Editor<R>({
   badge,
   actions,
   menu = [],
+  example,
   savedLabel,
   onClose,
   exportName = 'whiteboard',
@@ -1723,7 +1729,26 @@ function Editor<R>({
             })}
           </div>
 
-          {playIndex === null && doc.elements.length === 0 && <p className="board-empty">{t.board.empty}</p>}
+          {playIndex === null && doc.elements.length === 0 && (
+            <div className="board-empty">
+              <p>{t.board.empty}</p>
+              {/* 使用的一方給了這一題的範例：一鍵畫出來，不用自己去題目複製 */}
+              {example && (
+                <button
+                  type="button"
+                  className="btn board-example"
+                  data-ui
+                  onClick={() => {
+                    const error = drawExample(example);
+                    if (error) toast(error);
+                  }}
+                >
+                  {t.board.pasteExample.useProblem}
+                  <code className="board-example-input">{example}</code>
+                </button>
+              )}
+            </div>
+          )}
 
           {playIndex !== null && (
             <PlaybackBar

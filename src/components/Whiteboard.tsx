@@ -397,10 +397,13 @@ function Editor<R>({
       return;
     }
     const pad = 60;
+    // 播放中：播放列蓋在畫面下面，內容排在它上面的空間，不然高的白板最下面會被蓋住（至少留一半的高度）
+    const bar = node.querySelector<HTMLElement>('.board-playback')?.getBoundingClientRect();
+    const height = bar ? Math.max(bar.top - r.top, r.height / 2) : r.height;
     // 塞不下時不縮到看不清楚：寧可只看到中間的一部分
-    const fit = Math.min((r.width - pad * 2) / Math.max(bounds.w, 1), (r.height - pad * 2) / Math.max(bounds.h, 1), 1.25);
+    const fit = Math.min((r.width - pad * 2) / Math.max(bounds.w, 1), (height - pad * 2) / Math.max(bounds.h, 1), 1.25);
     const zoom = clampZoom(Math.max(READABLE_ZOOM, fit));
-    setView({ zoom, x: r.width / 2 - (bounds.x + bounds.w / 2) * zoom, y: r.height / 2 - (bounds.y + bounds.h / 2) * zoom });
+    setView({ zoom, x: r.width / 2 - (bounds.x + bounds.w / 2) * zoom, y: height / 2 - (bounds.y + bounds.h / 2) * zoom });
   }, []);
 
   // 打開時把內容放在畫面中間，只做這一次。

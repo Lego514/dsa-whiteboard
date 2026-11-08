@@ -604,6 +604,28 @@ test('records steps and plays them back with notes', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Play all 2 steps from the start' })).toBeVisible();
 });
 
+test('while playing, shows a tall board above the playback bar instead of under it', async ({ page, isMobile }) => {
+  // 手機上播放列很高，白板也不會縮到 50% 以下（看不清楚），這麼高的樹本來就放不下
+  test.skip(isMobile, 'desktop only');
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Binary tree', exact: true }).click();
+  const tree = page.getByRole('group', { name: /^Binary tree root/ });
+  // 一路往左的六層樹：很高
+  const selbar = page.getByRole('toolbar', { name: 'Selected element' });
+  await selbar.getByRole('button', { name: 'Build from text' }).click();
+  await selbar.getByRole('textbox', { name: 'Build from text' }).fill('[1,2,null,3,null,4,null,5,null,6]');
+  await selbar.getByRole('button', { name: 'Apply' }).click();
+  await page.keyboard.press('s');
+
+  await page.getByRole('button', { name: 'Play the step from the start' }).click();
+  const playback = page.getByRole('toolbar', { name: 'Step playback' });
+  await page.getByRole('button', { name: 'Show everything (0)' }).click();
+  const treeBox = (await tree.boundingBox())!;
+  const barBox = (await playback.boundingBox())!;
+  expect(treeBox.y + treeBox.height).toBeLessThanOrEqual(barBox.y);
+  expect(treeBox.y).toBeGreaterThan(0);
+});
+
 test('exports the board, or the step being played, as a PNG', async ({ page }) => {
   await page.goto('./');
   await expect(await headerButton(page, 'Export image')).toBeDisabled();

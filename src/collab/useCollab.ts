@@ -10,6 +10,11 @@ export interface CollabOptions {
   name: string;
   /** 建立房間的人：房間是空的時候，把自己現在的白板放上去 */
   seed?: boolean;
+  /**
+   * 用只能看的連結進來（url 是 …/view/<代碼>）：白板不能改，只能移動畫面、縮放、播放步驟。
+   * 真正擋住修改的是伺服器，這裡是讓畫面不出現編輯的工具
+   */
+  viewOnly?: boolean;
   /** 連線狀態和房間裡有誰 */
   onStatus?: (status: CollabStatus) => void;
 }

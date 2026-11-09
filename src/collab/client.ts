@@ -11,6 +11,8 @@ export interface CollabStatus {
   state: 'connecting' | 'open' | 'offline' | 'full';
   me?: Peer;
   peers: Peer[];
+  /** 只能看的連結用的代碼；只有能改的人拿得到 */
+  viewId?: string;
 }
 
 export interface CollabCallbacks {
@@ -45,6 +47,7 @@ export class CollabClient {
   /** 送出了但伺服器還沒確認：每個東西還差幾筆確認 */
   private pending = new Map<string, number>();
   private me: Peer | undefined;
+  private viewId: string | undefined;
   private peers = new Map<string, Peer>();
   private state: CollabStatus['state'] = 'connecting';
   private cursorAt: { x: number; y: number } | null = null;
@@ -155,6 +158,7 @@ export class CollabClient {
       case 'init': {
         this.backoff = 500;
         this.me = message.you;
+        this.viewId = message.viewId;
         this.peers = new Map(message.peers.map((peer) => [peer.id, peer]));
         const local = this.cb.getDoc();
         // 建立房間的人把自己的白板放上去；重新連上時，把斷線期間自己改的東西補上去
@@ -210,7 +214,7 @@ export class CollabClient {
   }
 
   private emit(): void {
-    this.cb.onStatus({ state: this.state, me: this.me, peers: [...this.peers.values()] });
+    this.cb.onStatus({ state: this.state, me: this.me, peers: [...this.peers.values()], viewId: this.viewId });
   }
 }
 

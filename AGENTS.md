@@ -62,6 +62,7 @@ e2e/            Playwright；collab.spec.ts 用兩個瀏覽器測一起編輯
 - **`model.ts` 和 `bits.ts`、`unionFind.ts`、`trie.ts` 互相引用**：這些檔案的頂層（常數、`const x = ...`）不能用到 model 的值，只能在函式裡用，不然看誰先載入，會讀到還沒初始化的值。
 - **一起編輯的同步規則**：每個元件為單位，伺服器收到的順序決定誰贏（last-write-wins）；自己還沒被確認的修改，不套用別人對同一個元件的修改；復原只退回自己的動作（別人的修改會套進復原紀錄的每個版本）。改這部分要跑 `src/collab/client.test.ts`（模擬網路的收斂測試）。
 - **共用伺服器只接受 `wrangler.jsonc` 裡 `ALLOWED_ORIGINS` 列的網址**；新的網站要用共用，就加在這裡。
+- **只能看的連結**（v0.1.21）：`/room/<房間代碼>` 能改、`/view/<只能看的代碼>` 只能看。只能看的代碼是房間代碼的 SHA-256（`worker/room.ts` 的 `viewIdOf`），Durable Object 用 `room:<只能看的代碼>` 當名字，兩種連結找到同一個房間；能不能改由 worker 決定（轉給房間時自己設 `role`），只能看的人送修改會收到 `reject: read_only`。能改的人的 `init` 帶 `viewId`（`CollabStatus.viewId`），`ShareControls` 的 `viewLink(viewId)` 組出連結；白板的 `collab.viewOnly` 拿掉元件庫、工具列、記一步，畫布只能拖、快捷鍵只留縮放和說明，第一次有內容時放到畫面中間。以前的房間用房間代碼當名字：能改的人第一次進來時 `adoptLegacy` 把內容搬過去（`takeDoc`），2026-11-20 以後可以拿掉。
 - **`readOnlySteps`、`startAtStep`**（v0.1.18）：給做好的步驟用（刷題教練的參考板書）。`readOnlySteps` 讓播放列的說明變成會換行的文字、拿掉「從這步繼續編輯」「刪除這一步」，只留「停止播放」；`startAtStep` 一打開就從那一步播放。
 - **`example` 屬性**（v0.1.17）：使用的一方給這一題的範例（LeetCode Input 的寫法），白板是空的時候，空白提示下面有「放上這題的範例」按鈕，跟「貼上範例」用同一個 `drawExample`。`insertExample`、`splitExample` 也從套件匯出，給使用的一方先檢查自己的範例畫不畫得出來（刷題教練的題庫測試）。
 - **複雜度區塊**（`complexity` 元件，v0.1.16）：標題、時間、空間各一個答案和一句理由，寬度固定（`COMPLEXITY_W`），高度至少 `COMPLEXITY_H`：三欄共用一個 grid，答案欄跟著比較長的答案，剩下的給理由，理由太長換行、整塊往下長（畫面量高度，`sizeOf` 收 `measured`；匯出的 `drawComplexity` 照 `board.css` 一樣的尺寸換行）。答案存使用者打的字，顯示和匯出經過 `formatBigO`（`lib/complexity.ts`：n^2 → n²、沒寫 O( 的包上）；編輯時輸入框用 `datalist` 建議 `COMMON_BIG_O`（所以它的 role 是 combobox）。答案預設空白，不先給答案。
@@ -108,5 +109,5 @@ e2e/            Playwright；collab.spec.ts 用兩個瀏覽器測一起編輯
 ## 待辦（使用者提過、還沒做的）
 
 - 先暫緩（使用者說「先不要」）：N 元樹（當成遞迴樹的變化）、元件庫重新分組。現在每組 6/7/5/4 個，一排 4 個；新元件放進還沒滿兩排的組不會多一排，筆記那組（4 個）再加就會多一排。
-- 共用房間沒有密碼：拿到連結的人都能編輯。
+- 共用房間沒有密碼：拿到能編輯連結的人都能改（只能看的連結 v0.1.21 做好了）。
 - 試用時提到、使用者說不急的（2026-11-06）：Queue 多一個兩頭都能進出的 deque 樣式；箭頭端點連到某個元件的某一格（random pointer），要改存檔格式；雙向鏈結串列、LRU 模板，要改存檔格式。

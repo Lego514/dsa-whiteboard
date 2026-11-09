@@ -40,7 +40,7 @@ test('two people edit one shared board together', async ({ page: alice, browser 
   await expect(status(alice)).toHaveText('1 person here');
   const link = alice.url();
   // 連結已經複製，選單打開給你看
-  await expect(alice.getByRole('textbox', { name: 'Link to this room' })).toHaveValue(link);
+  await expect(alice.getByRole('textbox', { name: 'Can edit' })).toHaveValue(link);
   await expect(alice.getByRole('status').filter({ hasText: 'Link copied' })).toBeVisible();
   expect(await alice.evaluate(() => (window as unknown as { copied: string }).copied)).toBe(link);
   await alice.keyboard.press('Escape');
@@ -111,7 +111,7 @@ test('explains sharing before making a room, and hands over the link when copyin
   await page.goto('./');
   await page.getByRole('button', { name: 'Share' }).click();
   const intro = page.getByRole('dialog', { name: 'Share this board' });
-  await expect(intro).toContainText('Anyone with the link can see it and edit it with you');
+  await expect(intro).toContainText('You get two links: one to edit with you live, and one that can only watch');
   await expect(intro).toContainText('Your own board stays on this device');
   // 取消：沒有開房間
   await intro.getByRole('button', { name: 'Cancel' }).click();
@@ -122,7 +122,7 @@ test('explains sharing before making a room, and hands over the link when copyin
   await page.getByRole('button', { name: 'Share' }).click();
   await intro.getByRole('button', { name: 'Create link' }).click();
   await expect(page).toHaveURL(/#room=[a-z0-9]{16}$/);
-  const field = page.getByRole('textbox', { name: 'Link to this room' });
+  const field = page.getByRole('textbox', { name: 'Can edit' });
   await expect(field).toHaveValue(page.url());
   await expect(page.getByRole('status').filter({ hasText: 'Couldn’t copy automatically' })).toBeVisible();
   await expect
@@ -146,4 +146,71 @@ test('a wrong room link opens the local board', async ({ page }) => {
   await page.goto('./#room=NOT_A_ROOM');
   await expect(page.getByRole('button', { name: 'Share' })).toBeVisible();
   await expect(page.getByText('Saved on this device')).toBeVisible();
+});
+
+test('a view-only link watches the board live but cannot change it', async ({ page: alice, browser }) => {
+  test.skip(test.info().project.name === 'iphone', '兩個人的流程在桌機測過就好');
+  await named(alice, 'Alice');
+  await fakeClipboard(alice, true);
+  await alice.goto('./');
+  await alice.getByRole('button', { name: 'Array', exact: true }).click();
+  await alice.getByRole('button', { name: 'Share' }).click();
+  await alice.getByRole('dialog', { name: 'Share this board' }).getByRole('button', { name: 'Create link' }).click();
+  await expect(status(alice)).toHaveText('1 person here');
+
+  // 選單裡有兩個連結：能編輯的就是網址，只能看的是另一個代碼，看不出房間代碼
+  const room = alice.url().match(/#room=([a-z0-9]+)$/)![1];
+  const viewField = alice.getByRole('textbox', { name: 'View only' });
+  await expect(viewField).toHaveValue(/#view=[a-z0-9]{24}$/);
+  const viewLink = await viewField.inputValue();
+  expect(viewLink).not.toContain(room);
+  await alice.getByRole('button', { name: 'Copy: View only' }).click();
+  await expect(alice.getByRole('status').filter({ hasText: 'View-only link copied' })).toBeVisible();
+  expect(await alice.evaluate(() => (window as unknown as { copied: string }).copied)).toBe(viewLink);
+  await alice.keyboard.press('Escape');
+
+  // Bob 用只能看的連結進來：看得到白板，沒有元件庫和工具列
+  const context = await browser.newContext({ locale: 'en-US' });
+  const bob = await context.newPage();
+  await named(bob, 'Bob');
+  await bob.goto(viewLink);
+  const array = bob.getByRole('group', { name: 'Array nums: 1, 2, 3, 4' });
+  await expect(array).toBeVisible();
+  await expect(status(bob)).toHaveText('View only · 2 people here');
+  await expect(bob.getByRole('complementary', { name: 'Elements' })).toHaveCount(0);
+  await expect(bob.getByRole('toolbar', { name: 'Tools' })).toHaveCount(0);
+  await expect(bob.getByRole('button', { name: /next step/ })).toHaveCount(0);
+
+  // 點兩下不會開始編輯，按 Delete、Ctrl+A 也沒有作用
+  await array.dblclick();
+  await expect(bob.getByRole('textbox', { name: 'Cell 0' })).toHaveCount(0);
+  await bob.keyboard.press('Control+a');
+  await bob.keyboard.press('Delete');
+  await expect(array).toBeVisible();
+
+  // Alice 那邊看得到 Bob 只能看；Alice 改的 Bob 馬上看到
+  await alice.getByRole('button', { name: /^Shared room/ }).click();
+  await expect(alice.getByRole('list', { name: 'Shared room' }).getByRole('listitem').filter({ hasText: 'Bob' })).toContainText('view only');
+  await alice.keyboard.press('Escape');
+  await alice.getByRole('group', { name: /^Array nums/ }).dblclick();
+  await alice.getByRole('textbox', { name: 'Cell 0' }).fill('7');
+  await alice.keyboard.press('Enter');
+  await expect(bob.getByRole('group', { name: 'Array nums: 7, 2, 3, 4' })).toBeVisible();
+
+  // 就算自己送修改給伺服器，也會被擋下來，Alice 的白板不變
+  const reason = await bob.evaluate(async (url) => {
+    const viewId = new URL(url).hash.slice('#view='.length);
+    const ws = new WebSocket(`ws://127.0.0.1:8787/view/${viewId}`);
+    return await new Promise<string>((resolve) => {
+      ws.onmessage = (event) => {
+        const message = JSON.parse(event.data as string);
+        if (message.t === 'init') ws.send(JSON.stringify({ t: 'ops', batch: 1, ops: [{ k: 'del', id: message.doc.elements[0].id }] }));
+        if (message.t === 'reject') resolve(message.reason);
+      };
+    });
+  }, viewLink);
+  expect(reason).toBe('read_only');
+  await expect(alice.getByRole('group', { name: 'Array nums: 7, 2, 3, 4' })).toBeVisible();
+
+  await context.close();
 });

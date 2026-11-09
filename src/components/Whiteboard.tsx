@@ -55,6 +55,8 @@ const OPEN_INSET = { top: 72, bottom: 120, side: 16 };
 /** 浮在畫布上、會擋住元件的列；剛加進來的東西要讓開它們 */
 const OVERLAYS = '.board-steps-widget, .board-selbar, .board-tools, .board-zoom';
 const TOOLS: Tool[] = ['select', 'hand', 'arrow', 'line', 'rect', 'ellipse', 'pen', 'eraser'];
+/** 只能看的時候還有作用的按鍵：縮放、放到畫面中間、說明、關掉說明 */
+const VIEW_ONLY_KEYS: ReadonlySet<string> = new Set(['+', '=', '-', '0', '?', 'Escape']);
 const TOOL_KEYS: Record<string, Tool> = { v: 'select', h: 'hand', a: 'arrow', l: 'line', r: 'rect', o: 'ellipse', p: 'pen', e: 'eraser' };
 
 type Gesture =
@@ -196,6 +198,8 @@ function Editor<R>({
 }: Omit<WhiteboardProps<R>, 'locale' | 'onNotice'>) {
   const { t } = useI18n();
   const toast = useNotice();
+  /** 只能看的共用連結：沒有元件庫和工具列，畫布只能拖著移動，步驟只能播放 */
+  const viewOnly = !!collab?.viewOnly;
   /** 手機的標題列放不下：語言、深淺色、匯出收進選單 */
   const narrowHeader = useNarrowHeader();
   const Session = explain?.Session;
@@ -272,7 +276,7 @@ function Editor<R>({
   const sendOps = room.send;
   // 畫面更新完、別的事件進來之前就送出：自己的修改不會跟別人的混在一起
   useLayoutEffect(() => {
-    if (!collab) return;
+    if (!collab || viewOnly) return;
     const ops = diffDocs(synced.current, doc);
     synced.current = doc;
     if (ops.length > 0) sendOps(ops);
@@ -413,6 +417,15 @@ function Editor<R>({
     const frame = requestAnimationFrame(() => fitTo(openedWith, new Map()));
     return () => cancelAnimationFrame(frame);
   }, [fitTo, openedWith]);
+
+  // 只能看的人一開始是空白，內容從房間來：第一次有東西時把它放在畫面中間（之後由看的人自己移動）
+  const fitOnContent = useRef(viewOnly);
+  useEffect(() => {
+    if (!fitOnContent.current || doc.elements.length === 0) return;
+    fitOnContent.current = false;
+    const frame = requestAnimationFrame(() => fitTo(doc, new Map()));
+    return () => cancelAnimationFrame(frame);
+  }, [doc, fitTo]);
 
   // 滾輪平移；按著 Ctrl 或觸控板捏合時縮放
   useEffect(() => {
@@ -940,7 +953,7 @@ function Editor<R>({
       return;
     }
     if (pointers.current.size > 2) return;
-    if (playIndex !== null) {
+    if (playIndex !== null || viewOnly) {
       gesture.current = { kind: 'pan', pointerId: e.pointerId, start: { x: e.clientX, y: e.clientY }, view };
       return;
     }
@@ -1299,6 +1312,8 @@ function Editor<R>({
       }
       if (e.type !== 'keydown') return;
       const mod = e.metaKey || e.ctrlKey;
+      // 只能看：只留移動、縮放和說明的快捷鍵
+      if (viewOnly && (mod || !VIEW_ONLY_KEYS.has(e.key))) return;
       if (mod && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         if (e.shiftKey) redo();
@@ -1469,7 +1484,14 @@ function Editor<R>({
   );
 
   return (
-    <div className="board" role="dialog" aria-modal="true" aria-label={title} data-playing={playIndex !== null || undefined}>
+    <div
+      className="board"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      data-playing={playIndex !== null || undefined}
+      data-view-only={viewOnly || undefined}
+    >
       <header className="board-head">
         {onClose && (
           // 只放 ×：比「關閉」「Close」省一點寬度，手機上標題列放得下題目名稱；名稱和提示還是「關閉」
@@ -1740,9 +1762,9 @@ function Editor<R>({
 
           {playIndex === null && doc.elements.length === 0 && (
             <div className="board-empty">
-              <p>{t.board.empty}</p>
+              <p>{viewOnly ? t.collab.viewEmpty : t.board.empty}</p>
               {/* 使用的一方給了這一題的範例：一鍵畫出來，不用自己去題目複製 */}
-              {example && (
+              {example && !viewOnly && (
                 <button
                   type="button"
                   className="btn board-example"
@@ -1773,7 +1795,7 @@ function Editor<R>({
               onCaption={(caption) => setHistory((h) => m.replace(h, m.setStepCaption(h.present, playIndex, caption)))}
               onCaptionEnd={() => setHistory((h) => m.dropEmptyCheckpoint(h))}
               explain={explaining && Session && <Session index={playIndex} stepCount={steps.length} finishRef={finishExplain} onFinish={endExplain} />}
-              readOnly={readOnlySteps}
+              readOnly={readOnlySteps || viewOnly}
             />
           )}
 
@@ -1783,9 +1805,9 @@ function Editor<R>({
               <StepsWidget
                 count={steps.length}
                 full={steps.length >= m.MAX_STEPS}
-                onCapture={captureCurrentStep}
+                onCapture={viewOnly ? undefined : captureCurrentStep}
                 onPlay={() => startPlayback(0)}
-                onExplain={explain ? startExplain : undefined}
+                onExplain={explain && !viewOnly ? startExplain : undefined}
               />
               {tool === 'select' && selected.size > 0 && (
                 <div ref={watchOverflow} className="board-selbar" role="toolbar" aria-label={t.board.selectionLabel} data-ui>
@@ -1882,8 +1904,8 @@ function Editor<R>({
             </div>
           )}
 
-          {/* 播放時下方換成播放列 */}
-          {playIndex === null && (
+          {/* 播放時下方換成播放列；只能看的人沒有工具 */}
+          {playIndex === null && !viewOnly && (
             <div className="board-tools" role="toolbar" aria-label={t.board.toolbarLabel} data-ui>
               {TOOLS.map((id) => (
                 <button

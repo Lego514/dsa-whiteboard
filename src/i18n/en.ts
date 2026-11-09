@@ -8,12 +8,12 @@ export const en: Messages = {
   },
   collab: {
     share: 'Share',
-    shareHint: 'Create a link; anyone with it can edit this board with you',
+    shareHint: 'Create links to edit this board together, or to let someone just watch',
     copyLink: 'Copy link',
     copied: 'Copied',
     introTitle: 'Share this board',
     introPoints: [
-      'Anyone with the link can see it and edit it with you, live.',
+      'You get two links: one to edit with you live, and one that can only watch.',
       'The board is sent to a server so others can join. A room is deleted a week after everyone leaves.',
       'Your own board stays on this device. The shared one is a copy: leave the room to go back to yours.',
     ],
@@ -23,7 +23,14 @@ export const en: Messages = {
     copy: 'Copy',
     linkCopied: 'Link copied. Send it to whoever you want to draw with.',
     copyFailed: 'Couldn’t copy automatically. The link is selected: press Ctrl+C (⌘C on a Mac).',
-    roomNote: 'Anyone with this link can edit. Leave to go back to your own board.',
+    roomNote: 'Anyone with the edit link can change the board; the view-only link can only watch. Leave to go back to your own board.',
+    editLink: 'Can edit',
+    viewLink: 'View only',
+    viewLinkCopied: 'View-only link copied. Whoever opens it can watch but not edit.',
+    viewerNote: 'You can watch this board but not change it. Leave to go back to your own board.',
+    viewOnly: 'view only',
+    viewing: (n) => `View only · ${n} ${n === 1 ? 'person' : 'people'} here`,
+    viewEmpty: 'Nothing here yet. Whatever they draw shows up here.',
     // 預設名字：每個形容詞的第一個字母都不一樣（頭像只放第一個字）
     guest: {
       adjectives: ['Brave', 'Calm', 'Eager', 'Friendly', 'Gentle', 'Happy', 'Kind', 'Lucky', 'Nimble', 'Quiet', 'Sunny', 'Witty'],

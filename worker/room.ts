@@ -52,3 +52,12 @@ export function loadDoc(raw: unknown): BoardDoc | null {
   const parsed = boardDocSchema.safeParse(raw);
   return parsed.success ? parsed.data : null;
 }
+
+/**
+ * 只能看的代碼：房間代碼的 SHA-256 換成 24 個小寫英數。同一個房間每次算都一樣，
+ * 所以不用另外存；伺服器用它當房間的名字，只能看的連結直接找得到房間，房間代碼卻推不回來
+ */
+export async function viewIdOf(roomId: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`dsa-whiteboard view:${roomId}`));
+  return Array.from(new Uint8Array(digest).slice(0, 24), (b) => '0123456789abcdefghijklmnopqrstuvwxyz'[b % 36]).join('');
+}

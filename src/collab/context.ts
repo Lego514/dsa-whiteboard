@@ -23,7 +23,7 @@ export function peopleOf(status: CollabStatus | null) {
 export function roomLabel(status: CollabStatus | null, t: Messages): string {
   switch (status?.state) {
     case 'open':
-      return t.collab.people(peopleOf(status).length);
+      return status.me?.viewer ? t.collab.viewing(peopleOf(status).length) : t.collab.people(peopleOf(status).length);
     case 'offline':
       return t.collab.offline;
     case 'full':

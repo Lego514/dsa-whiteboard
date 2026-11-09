@@ -1826,6 +1826,16 @@ textarea.board-text-input {
   pointer-events: none;
 }
 
+/* 只能看的共用連結：沒有元件庫，畫布占滿（手機上也不留元件列那一條） */
+.board[data-view-only] .board-palette {
+  display: none;
+}
+
+.board[data-view-only] .board-body {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .board[data-playing] .board-el,
   .board[data-playing] .board-cell {
@@ -2881,9 +2891,25 @@ input.board-dp-head-input {
 
 /* 房間選單最上面：連結本身，複製不了也能自己選起來複製 */
 .board-room-link {
+  display: grid;
+  gap: 8px;
   margin-bottom: 10px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--rule);
+}
+
+/* 能編輯、只能看兩個連結，各有一行小標 */
+.board-room-link-label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.board-room-tag {
+  color: var(--ink-3);
+  font-size: 12px;
 }
 
 .board-room-link-row {
@@ -2904,7 +2930,7 @@ input.board-dp-head-input {
 }
 
 .board-room-note {
-  margin: 6px 0 0;
+  margin: 0;
   color: var(--ink-3);
   font-size: 13px;
   line-height: 1.4;
@@ -2936,9 +2962,10 @@ input.board-dp-head-input {
   }
 }
 
-/* 手機上標題列放不下：共用時連線狀態看頭像就好（選單裡有文字） */
+/* 手機上標題列放不下：共用時連線狀態看頭像就好（選單裡有文字）。
+   只能看的人留著，才知道自己為什麼不能改 */
 @media (max-width: 480px) {
-  .board-head:has(.board-peers) .board-save {
+  .board:not([data-view-only]) .board-head:has(.board-peers) .board-save {
     display: none;
   }
 }

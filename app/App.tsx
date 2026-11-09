@@ -6,6 +6,7 @@ import {
   newRoomId,
   ROOM_ID,
   ShareControls,
+  VIEW_ID,
   Whiteboard,
   type BoardDoc,
   type HeaderMenuItem,
@@ -14,7 +15,8 @@ import {
 import { boardDocSchema } from '../src/schema';
 
 // 獨立的白板網站：一張白板存在這個瀏覽器裡，不用登入。
-// 按「共用」會建立一個共用房間，網址後面加上 #room=…，把網址傳給別人就能一起編輯。
+// 按「共用」會建立一個共用房間，網址後面加上 #room=…，把網址傳給別人就能一起編輯；
+// #view=… 是同一個房間只能看的連結。
 
 const DOC_KEY = 'dsa-whiteboard:doc';
 const LOCALE_KEY = 'dsa-whiteboard:locale';
@@ -110,12 +112,25 @@ function useTheme(): { dark: boolean; toggle: () => void } {
   return { dark, toggle };
 }
 
-/** 網址裡的房間代碼：#room=…（網站沒設定共用伺服器時當作沒有） */
-function roomFromHash(): string | null {
-  if (!COLLAB_URL) return null;
-  const id = new URLSearchParams(window.location.hash.slice(1)).get('room');
-  return id && ROOM_ID.test(id) ? id : null;
+/** 網址裡的房間：#room=… 能改，#view=… 只能看（網站沒設定共用伺服器時當作沒有） */
+interface RoomLink {
+  id: string;
+  viewOnly: boolean;
 }
+
+function roomFromHash(): RoomLink | null {
+  if (!COLLAB_URL) return null;
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  const room = params.get('room');
+  if (room && ROOM_ID.test(room)) return { id: room, viewOnly: false };
+  const view = params.get('view');
+  return view && VIEW_ID.test(view) ? { id: view, viewOnly: true } : null;
+}
+
+const sameRoom = (a: RoomLink | null, b: RoomLink | null) => a?.id === b?.id && a?.viewOnly === b?.viewOnly;
+
+/** 只能看的連結：同一頁、#view=… */
+const viewLinkOf = (viewId: string) => `${window.location.origin}${window.location.pathname}${window.location.search}#view=${viewId}`;
 
 /** 共用時別人看到的名字：第一次用時取一個形容詞加動物；舊版自動取的「Guest 17」也換掉，自己取的名字不動 */
 function initialName(locale: Locale): string {
@@ -164,7 +179,7 @@ export function App() {
   // 上一頁、下一頁或手動改網址時，跟著換房間
   const onHashChange = useEffectEvent(() => {
     const next = roomFromHash();
-    if (next === room) return;
+    if (sameRoom(next, room)) return;
     setRoom(next);
     setLocalDoc(loadDoc());
   });
@@ -204,7 +219,7 @@ export function App() {
     const id = newRoomId();
     setCreated(id);
     window.location.hash = `room=${id}`;
-    setRoom(id);
+    setRoom({ id, viewOnly: false });
     return window.location.href;
   };
 
@@ -235,6 +250,7 @@ export function App() {
       <ShareControls
         onShare={COLLAB_URL ? share : undefined}
         link={room ? window.location.href : undefined}
+        viewLink={viewLinkOf}
         onRename={rename}
         onSaveCopy={saveCopy}
         onLeave={leave}
@@ -251,14 +267,19 @@ export function App() {
 
   const collab =
     room && COLLAB_URL
-      ? { url: `${COLLAB_URL.replace(/^http/, 'ws').replace(/\/$/, '')}/room/${room}`, name, seed: created === room }
+      ? {
+          url: `${COLLAB_URL.replace(/^http/, 'ws').replace(/\/$/, '')}/${room.viewOnly ? 'view' : 'room'}/${room.id}`,
+          name,
+          seed: !room.viewOnly && created === room.id,
+          viewOnly: room.viewOnly,
+        }
       : undefined;
 
   return (
     <Whiteboard
-      key={room ? `room:${room}` : 'local'}
+      key={room ? `${room.viewOnly ? 'view' : 'room'}:${room.id}` : 'local'}
       locale={locale}
-      initial={room ? (created === room ? localDoc : EMPTY_DOC) : localDoc}
+      initial={room ? (created === room.id ? localDoc : EMPTY_DOC) : localDoc}
       onSave={save}
       onChange={(doc) => (current.current = doc)}
       title="DSA Whiteboard"

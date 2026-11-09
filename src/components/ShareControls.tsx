@@ -6,14 +6,17 @@ import { PeerAvatar } from './PeerAvatar';
 // 標題列上的共用按鈕：放在 Whiteboard 的 actions 裡。
 // 沒在房間裡時是「共用」：先說明會發生什麼（誰能改、存在哪裡、自己的白板怎麼辦），按「建立連結」才開房間。
 // 在房間裡時是疊在一起的頭像（點開看連結、有誰、改名字、存一份、離開）和「複製連結」。
+// 能改的人的選單裡有兩個連結：能編輯的、只能看的（給面試官這類只要看的人）。
 // 不能用剪貼簿時把連結放在選單的輸入框裡、選好，讓人自己複製，不會什麼都沒發生。
 // 房間代碼放在哪裡（網址的 # 或 ?）、怎麼存一份，由使用的一方決定。
 
 export interface ShareControlsProps {
   /** 按「建立連結」：建立房間並回傳房間的連結，會自動複製。沒給就不顯示「共用」 */
   onShare?: () => string | undefined;
-  /** 房間的連結，「複製連結」用 */
+  /** 房間的連結，「複製連結」用；用只能看的連結進來的人，給的就是只能看的連結 */
   link?: string;
+  /** 用只能看的代碼組出連結；給了，能改的人的選單裡多一個「只能看」的連結 */
+  viewLink?: (viewId: string) => string;
   /** 改名字；沒給就不能改 */
   onRename?: (name: string) => void;
   /** 把房間的白板存成自己的；沒給就不顯示 */
@@ -43,7 +46,7 @@ async function writeClipboard(text: string | undefined): Promise<boolean> {
   }
 }
 
-export function ShareControls({ onShare, link, onRename, onSaveCopy, onLeave }: ShareControlsProps) {
+export function ShareControls({ onShare, link, viewLink, onRename, onSaveCopy, onLeave }: ShareControlsProps) {
   const { t } = useI18n();
   const c = t.collab;
   const room = useRoom();
@@ -54,6 +57,8 @@ export function ShareControls({ onShare, link, onRename, onSaveCopy, onLeave }: 
   const intro = useRef<HTMLDivElement>(null);
   const linkInput = useRef<HTMLInputElement>(null);
   const [copy, setCopy] = useState<CopyState>('idle');
+  /** 剛複製的是哪一個連結，那一個的按鈕才寫「已複製」 */
+  const [copiedLink, setCopiedLink] = useState<string | undefined>(undefined);
   const copiedTimer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(copiedTimer.current), []);
 
@@ -90,6 +95,7 @@ export function ShareControls({ onShare, link, onRename, onSaveCopy, onLeave }: 
 
   const copyLink = async (text: string | undefined): Promise<boolean> => {
     const ok = await writeClipboard(text);
+    setCopiedLink(text);
     showCopied(ok);
     return ok;
   };
@@ -138,7 +144,14 @@ export function ShareControls({ onShare, link, onRename, onSaveCopy, onLeave }: 
     const next = window.prompt(c.renamePrompt, status?.me?.name ?? '')?.trim();
     if (next) onRename?.(next);
   };
-  const note = copy === 'failed' ? c.copyFailed : copy === 'copied' ? c.linkCopied : c.roomNote;
+  const viewer = !!status?.me?.viewer;
+  const watchLink = !viewer && status?.viewId && viewLink ? viewLink(status.viewId) : undefined;
+  const copiedNote = watchLink && copiedLink === watchLink ? c.viewLinkCopied : c.linkCopied;
+  const note = copy === 'failed' ? c.copyFailed : copy === 'copied' ? copiedNote : viewer ? c.viewerNote : c.roomNote;
+  const links = [
+    ...(link ? [{ label: watchLink ? c.editLink : undefined, url: link }] : []),
+    ...(watchLink ? [{ label: c.viewLink, url: watchLink }] : []),
+  ];
 
   return (
     <>
@@ -163,21 +176,35 @@ export function ShareControls({ onShare, link, onRename, onSaveCopy, onLeave }: 
       </button>
       <div id={menuId} className="board-room-menu" popover="auto" ref={menu}>
         <p className="board-room-status">{label}</p>
-        {link && (
+        {links.length > 0 && (
           <div className="board-room-link">
-            <div className="board-room-link-row">
-              <input
-                ref={linkInput}
-                className="board-room-link-input"
-                readOnly
-                value={link}
-                aria-label={c.linkLabel}
-                onFocus={(e) => e.currentTarget.select()}
-              />
-              <button type="button" className="btn btn-small" onClick={() => void copyLink(link)}>
-                {copy === 'copied' ? c.copied : c.copy}
-              </button>
-            </div>
+            {links.map(({ label, url }, i) => (
+              <div key={url}>
+                {label && <span className="board-room-link-label">{label}</span>}
+                <div className="board-room-link-row">
+                  <input
+                    ref={i === 0 ? linkInput : undefined}
+                    className="board-room-link-input"
+                    readOnly
+                    value={url}
+                    aria-label={label ?? c.linkLabel}
+                    onFocus={(e) => e.currentTarget.select()}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-small"
+                    aria-label={label ? `${c.copy}: ${label}` : undefined}
+                    onClick={(e) => {
+                      // 複製不了：把旁邊這一條連結選好，讓人自己複製
+                      const input = e.currentTarget.previousElementSibling;
+                      void copyLink(url).then((ok) => ok || (input instanceof HTMLInputElement && input.select()));
+                    }}
+                  >
+                    {copy === 'copied' && copiedLink === url ? c.copied : c.copy}
+                  </button>
+                </div>
+              </div>
+            ))}
             <p className="board-room-note" role="status" data-failed={copy === 'failed' || undefined}>
               {note}
             </p>
@@ -192,6 +219,7 @@ export function ShareControls({ onShare, link, onRename, onSaveCopy, onLeave }: 
                 <span className="board-room-name">
                   {peer.name}
                   {isMe && c.you}
+                  {peer.viewer && <span className="board-room-tag"> · {c.viewOnly}</span>}
                 </span>
                 {isMe && onRename && (
                   <button type="button" className="btn btn-quiet btn-small" onClick={rename}>

@@ -42,7 +42,8 @@ const ICON_PAUSE = (
 interface StepsWidgetProps {
   count: number;
   full: boolean;
-  onCapture: () => void;
+  /** 沒給就不顯示「記下這一步」（只能看的共用連結） */
+  onCapture?: () => void;
   onPlay: () => void;
   /** 沒給就不顯示「講解」按鈕 */
   onExplain?: () => void;
@@ -54,17 +55,19 @@ export function StepsWidget({ count, full, onCapture, onPlay, onExplain }: Steps
   const s = t.board.steps;
   return (
     <div className="board-steps-widget" role="group" aria-label={s.label} data-ui>
-      <button
-        type="button"
-        className="btn btn-small board-record"
-        disabled={full}
-        aria-label={full ? s.full : s.captureHint}
-        title={full ? s.full : s.captureHint}
-        onClick={onCapture}
-      >
-        <span className="board-record-dot" aria-hidden />
-        <span className="board-steps-text">{s.capture}</span>
-      </button>
+      {onCapture && (
+        <button
+          type="button"
+          className="btn btn-small board-record"
+          disabled={full}
+          aria-label={full ? s.full : s.captureHint}
+          title={full ? s.full : s.captureHint}
+          onClick={onCapture}
+        >
+          <span className="board-record-dot" aria-hidden />
+          <span className="board-steps-text">{s.capture}</span>
+        </button>
+      )}
       <button type="button" className="btn btn-small" disabled={count === 0} aria-label={s.playAll(count)} title={s.playAll(count)} onClick={onPlay}>
         <span className="board-steps-play" aria-hidden>
           {ICON_PLAY}

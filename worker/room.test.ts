@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { applyBatch, cleanName, loadDoc, parseClientMessage } from './room';
+import { VIEW_ID } from '../src/collab/messages';
+import { applyBatch, cleanName, loadDoc, parseClientMessage, viewIdOf } from './room';
 
 const v = (id: string, value = '1') => ({ type: 'var', id, x: 0, y: 0, name: id, value });
 
@@ -30,6 +31,14 @@ describe('room rules', () => {
     expect(small.ok).toBe(true);
     const big = applyBatch({ elements: [] }, Array.from({ length: 120 }, (_, i) => ({ k: 'put' as const, el: stroke(`s${i}`) })));
     expect(big).toEqual({ ok: false, reason: 'too_large' });
+  });
+
+  it('derives a view-only code that stays the same for a room and does not reveal it', async () => {
+    const view = await viewIdOf('k3f9x2abcdefgh12');
+    expect(view).toMatch(VIEW_ID);
+    expect(await viewIdOf('k3f9x2abcdefgh12')).toBe(view);
+    expect(await viewIdOf('k3f9x2abcdefgh13')).not.toBe(view);
+    expect(view).not.toContain('k3f9x2');
   });
 
   it('reads back a stored board, and treats a broken one as missing', () => {

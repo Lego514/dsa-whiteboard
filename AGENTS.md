@@ -10,7 +10,7 @@
 - **獨立網站**：https://lego514.github.io/dsa-whiteboard/ （`app/`，GitHub Pages）
 - **一起編輯的伺服器**：Cloudflare Worker + 每個房間一個 Durable Object（`worker/`），網址 https://dsa-whiteboard-collab.ray1998514.workers.dev
 
-公開、MIT 授權。使用者是正在找工作的 MSCS 學生，這個 repo 也是履歷上的作品。
+公開、MIT 授權。這個 repo 也是履歷上的作品。
 
 ## 跟使用者合作的方式
 

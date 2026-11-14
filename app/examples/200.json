@@ -1,0 +1,337 @@
+{
+  "elements": [
+    {
+      "type": "table",
+      "id": "grid",
+      "x": 0,
+      "y": 0,
+      "variant": "grid",
+      "label": "grid",
+      "rows": [
+        [
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "0",
+          "0"
+        ]
+      ]
+    },
+    {
+      "type": "var",
+      "id": "count",
+      "x": 300,
+      "y": 22,
+      "name": "count",
+      "value": "2"
+    },
+    {
+      "type": "complexity",
+      "id": "cx",
+      "x": 300,
+      "y": 80,
+      "title": "Complexity",
+      "time": "m·n",
+      "timeWhy": "every cell is scanned and sunk at most once",
+      "space": "m·n",
+      "spaceWhy": "DFS can go as deep as the whole grid"
+    },
+    {
+      "type": "text",
+      "id": "edge",
+      "x": 680,
+      "y": 22,
+      "variant": "sticky",
+      "text": "Diagonal cells don’t connect: only up, down, left, right.",
+      "w": 240
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "caption": "The key insight is that each island is a connected group of land, so I count how many times I start a new search.",
+      "elements": [
+        {
+          "type": "table",
+          "id": "grid",
+          "x": 0,
+          "y": 0,
+          "variant": "grid",
+          "label": "grid",
+          "rows": [
+            [
+              "1",
+              "1",
+              "0",
+              "0"
+            ],
+            [
+              "1",
+              "0",
+              "0",
+              "1"
+            ],
+            [
+              "0",
+              "0",
+              "1",
+              "1"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "s2",
+      "caption": "So I scan the grid and, for every unvisited \"1\", run DFS or BFS to sink the whole island and add one to the count.",
+      "elements": [
+        {
+          "type": "table",
+          "id": "grid",
+          "x": 0,
+          "y": 0,
+          "variant": "grid",
+          "label": "grid",
+          "rows": [
+            [
+              "1",
+              "1",
+              "0",
+              "0"
+            ],
+            [
+              "1",
+              "0",
+              "0",
+              "1"
+            ],
+            [
+              "0",
+              "0",
+              "1",
+              "1"
+            ]
+          ]
+        },
+        {
+          "type": "var",
+          "id": "count",
+          "x": 300,
+          "y": 22,
+          "name": "count",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "id": "s3",
+      "caption": "(0, 0) is land: count becomes 1, and DFS sinks (0, 0), (0, 1), and (1, 0), the whole first island.",
+      "elements": [
+        {
+          "type": "table",
+          "id": "grid",
+          "x": 0,
+          "y": 0,
+          "variant": "grid",
+          "label": "grid",
+          "rows": [
+            [
+              "0",
+              "0",
+              "0",
+              "0"
+            ],
+            [
+              "0",
+              "0",
+              "0",
+              "1"
+            ],
+            [
+              "0",
+              "0",
+              "1",
+              "1"
+            ]
+          ]
+        },
+        {
+          "type": "var",
+          "id": "count",
+          "x": 300,
+          "y": 22,
+          "name": "count",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "caption": "For example, a grid with two separate blobs of 1s gives 2.",
+      "elements": [
+        {
+          "type": "table",
+          "id": "grid",
+          "x": 0,
+          "y": 0,
+          "variant": "grid",
+          "label": "grid",
+          "rows": [
+            [
+              "0",
+              "0",
+              "0",
+              "0"
+            ],
+            [
+              "0",
+              "0",
+              "0",
+              "0"
+            ],
+            [
+              "0",
+              "0",
+              "0",
+              "0"
+            ]
+          ]
+        },
+        {
+          "type": "var",
+          "id": "count",
+          "x": 300,
+          "y": 22,
+          "name": "count",
+          "value": "2"
+        }
+      ]
+    },
+    {
+      "id": "s5",
+      "caption": "This takes O(m times n) time and O(m times n) space in the worst case for recursion or the queue.",
+      "elements": [
+        {
+          "type": "table",
+          "id": "grid",
+          "x": 0,
+          "y": 0,
+          "variant": "grid",
+          "label": "grid",
+          "rows": [
+            [
+              "0",
+              "0",
+              "0",
+              "0"
+            ],
+            [
+              "0",
+              "0",
+              "0",
+              "0"
+            ],
+            [
+              "0",
+              "0",
+              "0",
+              "0"
+            ]
+          ]
+        },
+        {
+          "type": "var",
+          "id": "count",
+          "x": 300,
+          "y": 22,
+          "name": "count",
+          "value": "2"
+        },
+        {
+          "type": "complexity",
+          "id": "cx",
+          "x": 300,
+          "y": 80,
+          "title": "Complexity",
+          "time": "m·n",
+          "timeWhy": "every cell is scanned and sunk at most once",
+          "space": "m·n",
+          "spaceWhy": "DFS can go as deep as the whole grid"
+        }
+      ]
+    },
+    {
+      "id": "s6",
+      "caption": "One edge case is diagonal cells, which don't count as connected.",
+      "elements": [
+        {
+          "type": "table",
+          "id": "grid",
+          "x": 0,
+          "y": 0,
+          "variant": "grid",
+          "label": "grid",
+          "rows": [
+            [
+              "0",
+              "0",
+              "0",
+              "0"
+            ],
+            [
+              "0",
+              "0",
+              "0",
+              "0"
+            ],
+            [
+              "0",
+              "0",
+              "0",
+              "0"
+            ]
+          ]
+        },
+        {
+          "type": "var",
+          "id": "count",
+          "x": 300,
+          "y": 22,
+          "name": "count",
+          "value": "2"
+        },
+        {
+          "type": "complexity",
+          "id": "cx",
+          "x": 300,
+          "y": 80,
+          "title": "Complexity",
+          "time": "m·n",
+          "timeWhy": "every cell is scanned and sunk at most once",
+          "space": "m·n",
+          "spaceWhy": "DFS can go as deep as the whole grid"
+        },
+        {
+          "type": "text",
+          "id": "edge",
+          "x": 680,
+          "y": 22,
+          "variant": "sticky",
+          "text": "Diagonal cells don’t connect: only up, down, left, right.",
+          "w": 240
+        }
+      ]
+    }
+  ]
+}

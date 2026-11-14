@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { asReturningVisitor } from './returning';
 
 // 一起編輯：兩個瀏覽器（兩份 localStorage）連到本機 wrangler dev 跑的房間
 
@@ -24,6 +25,9 @@ async function fakeClipboard(page: Page, ok: boolean) {
     });
   }, ok);
 }
+
+// 這裡測的是自己的白板：當成來過的人，第一次來會自動播放的範例另外測（examples.spec.ts）
+test.beforeEach(async ({ page }) => asReturningVisitor(page));
 
 test('two people edit one shared board together', async ({ page: alice, browser }) => {
   await named(alice, 'Alice');

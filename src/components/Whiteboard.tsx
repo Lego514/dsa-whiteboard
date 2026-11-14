@@ -20,6 +20,7 @@ import { insertExample } from '../lib/example';
 import { boardToSvg, estimateWidth, type Measure } from '../lib/exportSvg';
 import { flipBit, isBits } from '../lib/bits';
 import * as m from '../lib/model';
+import { stepDwellMs } from '../lib/playback';
 import { acceptsText, applyStructureText, structureText, type TextElement } from '../lib/structures';
 import { insertTemplate, TEMPLATES, type TemplateKind } from '../lib/templates';
 import { trieNodes } from '../lib/trie';
@@ -153,6 +154,8 @@ export interface WhiteboardProps<R = unknown> {
   readOnlySteps?: boolean;
   /** 一打開就從這一步開始播放（從 0 數）；沒給就是一般的編輯畫面 */
   startAtStep?: number;
+  /** 跟 startAtStep 一起用：一打開就自動播放一輪，停在最後一步（例如網站第一次打開時的範例） */
+  autoPlay?: boolean;
   /** 存好之後顯示的文字；沒給就是「已存在這台裝置」。共用時改成顯示連線狀態 */
   savedLabel?: string;
   locale?: Locale;
@@ -190,6 +193,7 @@ function Editor<R>({
   example,
   readOnlySteps = false,
   startAtStep,
+  autoPlay: autoPlayOnOpen = false,
   savedLabel,
   onClose,
   exportName = 'whiteboard',
@@ -233,7 +237,7 @@ function Editor<R>({
   const [colorsOpen, setColorsOpen] = useState(false);
   /** 正在播放第幾步；null 是一般編輯 */
   const [playing, setPlaying] = useState<number | null>(startAtStep ?? null);
-  const [autoPlay, setAutoPlay] = useState(false);
+  const [autoPlay, setAutoPlay] = useState(autoPlayOnOpen && startAtStep !== undefined);
   /** 講解模式：播放時一邊講一邊錄音；講完是那次的結果 */
   const [explaining, setExplaining] = useState(false);
   const [explained, setExplained] = useState<{ result: R } | null>(null);
@@ -753,15 +757,16 @@ function Editor<R>({
     else setPlaying(Math.min(playIndex, steps.length - 2));
   };
 
-  // 自動播放：每一步停 1.4 秒，播到最後一步就停
+  // 自動播放：每一步照說明的長短停一下（讀得完才換），播到最後一步就停
+  const dwell = playIndex === null ? 0 : stepDwellMs(steps[playIndex]?.caption);
   useEffect(() => {
     if (!autoPlay || playIndex === null) return;
     const timer = window.setTimeout(() => {
       if (playIndex >= steps.length - 1) setAutoPlay(false);
       else setPlaying(playIndex + 1);
-    }, 1400);
+    }, dwell);
     return () => window.clearTimeout(timer);
-  }, [autoPlay, playIndex, steps.length]);
+  }, [autoPlay, playIndex, steps.length, dwell]);
 
   /** 匯出目前畫面上的內容（播放時是那一步）成 PNG */
   const exportImage = async () => {

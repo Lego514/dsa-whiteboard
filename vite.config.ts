@@ -12,6 +12,6 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'node',
-    include: ['src/**/*.test.{ts,tsx}', 'worker/**/*.test.ts'],
+    include: ['src/**/*.test.{ts,tsx}', 'app/**/*.test.ts', 'worker/**/*.test.ts'],
   },
 });

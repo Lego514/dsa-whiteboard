@@ -4,7 +4,7 @@
 
 A whiteboard for data structures and algorithms, built from scratch in React and TypeScript.
 
-**Try it:** https://lego514.github.io/dsa-whiteboard/ (no sign-up; the board is saved in your browser). Press **Share** to get a link: everyone who opens it edits the same board live, with each person's cursor and name on the canvas. A second, view-only link lets someone watch, for example an interviewer in a mock interview.
+**Try it:** https://lego514.github.io/dsa-whiteboard/ (no sign-up; the board is saved in your browser). On a first visit it plays an example walkthrough, step by step with a caption for each step; **Edit this board** keeps it, **Blank board** starts fresh. Examples have their own links: [206. Reverse Linked List](https://lego514.github.io/dsa-whiteboard/#example=206), [1143. Longest Common Subsequence](https://lego514.github.io/dsa-whiteboard/#example=1143), [200. Number of Islands](https://lego514.github.io/dsa-whiteboard/#example=200). Press **Share** to get a link: everyone who opens it edits the same board live, with each person's cursor and name on the canvas. A second, view-only link lets someone watch, for example an interviewer in a mock interview.
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/board-dark.png"><img src="docs/images/board-light.png" alt="The whiteboard with the Tree DFS template: a binary tree, a node pointer on the root, and a stack"></picture>
 
@@ -129,6 +129,7 @@ The board takes the whole screen. You own the storage: `onSave` is called about 
 | `onClose` | Shows a Close button. |
 | `exportName` | File name for exported PNGs. |
 | `onNotice(message)` | Shows messages (such as a failed export) with your app's toasts instead of the board's own. |
+| `readOnlySteps`, `startAtStep`, `autoPlay` | For ready-made walkthroughs: `startAtStep` opens playing from that step, `readOnlySteps` makes captions read-only, and `autoPlay` plays through once and stops on the last step. Each step stays up long enough to read its caption. |
 | `onChange(doc)` | Called right away on every change (and once when the board opens), without waiting for the save delay. |
 | `collab` | Joins a live room: `{ url, name, seed?, viewOnly?, onStatus? }`. `url` is the room's WebSocket address on the collab server (`…/room/<room id>` to edit, `…/view/<view id>` to watch; set `viewOnly` with the second), `name` is shown next to your cursor, `seed` puts your board into the room if it's empty (for whoever creates it), and `onStatus` reports the connection and who's there. While in a room, the room's board is the one shown. |
 | `explain` | Adds an Explain button that plays the recorded steps. You provide `Session` (shown under the playback bar while explaining) and `Review` (shown over the board when done). LeetCode Coach uses it for spoken explanations with a timer, recording, and transcript. |

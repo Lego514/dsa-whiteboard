@@ -1,0 +1,392 @@
+{
+  "elements": [
+    {
+      "type": "list",
+      "id": "head",
+      "x": 80,
+      "y": 0,
+      "variant": "linked",
+      "label": "head",
+      "items": [
+        "1",
+        "2",
+        "3"
+      ],
+      "links": [
+        "prev",
+        "prev"
+      ]
+    },
+    {
+      "type": "pointer",
+      "id": "prev",
+      "x": 0,
+      "y": 0,
+      "name": "prev",
+      "attach": {
+        "id": "head",
+        "index": 2
+      }
+    },
+    {
+      "type": "var",
+      "id": "curr",
+      "x": 0,
+      "y": 110,
+      "name": "curr",
+      "value": "None"
+    },
+    {
+      "type": "complexity",
+      "id": "cx",
+      "x": 540,
+      "y": 0,
+      "title": "Complexity",
+      "time": "n",
+      "timeWhy": "one pass over the nodes",
+      "space": "1",
+      "spaceWhy": "just prev, curr, and next"
+    },
+    {
+      "type": "text",
+      "id": "edge",
+      "x": 540,
+      "y": 140,
+      "variant": "sticky",
+      "text": "Empty list or a single node: return head as is.",
+      "w": 240
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "caption": "The key insight is that reversing a list just means pointing each node back at the node before it.",
+      "elements": [
+        {
+          "type": "list",
+          "id": "head",
+          "x": 80,
+          "y": 0,
+          "variant": "linked",
+          "label": "head",
+          "items": [
+            "1",
+            "2",
+            "3"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "s2",
+      "caption": "So I walk the list with previous and current pointers, saving next before I redirect current.next.",
+      "elements": [
+        {
+          "type": "list",
+          "id": "head",
+          "x": 80,
+          "y": 0,
+          "variant": "linked",
+          "label": "head",
+          "items": [
+            "1",
+            "2",
+            "3"
+          ]
+        },
+        {
+          "type": "pointer",
+          "id": "prev",
+          "x": 0,
+          "y": 0,
+          "name": "prev",
+          "attach": {
+            "id": "head",
+            "index": 0,
+            "none": true
+          }
+        },
+        {
+          "type": "pointer",
+          "id": "curr",
+          "x": 0,
+          "y": 0,
+          "name": "curr",
+          "attach": {
+            "id": "head",
+            "index": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "s3",
+      "caption": "Save next = 2, point 1 back at prev (None), then move prev and curr forward.",
+      "elements": [
+        {
+          "type": "list",
+          "id": "head",
+          "x": 80,
+          "y": 0,
+          "variant": "linked",
+          "label": "head",
+          "items": [
+            "1",
+            "2",
+            "3"
+          ],
+          "links": [
+            "none",
+            "next"
+          ]
+        },
+        {
+          "type": "pointer",
+          "id": "prev",
+          "x": 0,
+          "y": 0,
+          "name": "prev",
+          "attach": {
+            "id": "head",
+            "index": 0
+          }
+        },
+        {
+          "type": "pointer",
+          "id": "curr",
+          "x": 0,
+          "y": 0,
+          "name": "curr",
+          "attach": {
+            "id": "head",
+            "index": 1
+          }
+        },
+        {
+          "type": "pointer",
+          "id": "next",
+          "x": 0,
+          "y": 0,
+          "name": "next",
+          "attach": {
+            "id": "head",
+            "index": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "caption": "Save next = 3, point 2 back at 1, then move forward again.",
+      "elements": [
+        {
+          "type": "list",
+          "id": "head",
+          "x": 80,
+          "y": 0,
+          "variant": "linked",
+          "label": "head",
+          "items": [
+            "1",
+            "2",
+            "3"
+          ],
+          "links": [
+            "prev",
+            "next"
+          ]
+        },
+        {
+          "type": "pointer",
+          "id": "prev",
+          "x": 0,
+          "y": 0,
+          "name": "prev",
+          "attach": {
+            "id": "head",
+            "index": 1
+          }
+        },
+        {
+          "type": "pointer",
+          "id": "curr",
+          "x": 0,
+          "y": 0,
+          "name": "curr",
+          "attach": {
+            "id": "head",
+            "index": 2
+          }
+        },
+        {
+          "type": "pointer",
+          "id": "next",
+          "x": 0,
+          "y": 0,
+          "name": "next",
+          "attach": {
+            "id": "head",
+            "index": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "s5",
+      "caption": "For example, 1 to 2 to 3 becomes 3 to 2 to 1, and previous ends at the new head, 3.",
+      "elements": [
+        {
+          "type": "list",
+          "id": "head",
+          "x": 80,
+          "y": 0,
+          "variant": "linked",
+          "label": "head",
+          "items": [
+            "1",
+            "2",
+            "3"
+          ],
+          "links": [
+            "prev",
+            "prev"
+          ]
+        },
+        {
+          "type": "pointer",
+          "id": "prev",
+          "x": 0,
+          "y": 0,
+          "name": "prev",
+          "attach": {
+            "id": "head",
+            "index": 2
+          }
+        },
+        {
+          "type": "var",
+          "id": "curr",
+          "x": 0,
+          "y": 110,
+          "name": "curr",
+          "value": "None"
+        }
+      ]
+    },
+    {
+      "id": "s6",
+      "caption": "This takes O(n) time and O(1) space iteratively; the recursive version uses O(n) stack.",
+      "elements": [
+        {
+          "type": "list",
+          "id": "head",
+          "x": 80,
+          "y": 0,
+          "variant": "linked",
+          "label": "head",
+          "items": [
+            "1",
+            "2",
+            "3"
+          ],
+          "links": [
+            "prev",
+            "prev"
+          ]
+        },
+        {
+          "type": "pointer",
+          "id": "prev",
+          "x": 0,
+          "y": 0,
+          "name": "prev",
+          "attach": {
+            "id": "head",
+            "index": 2
+          }
+        },
+        {
+          "type": "var",
+          "id": "curr",
+          "x": 0,
+          "y": 110,
+          "name": "curr",
+          "value": "None"
+        },
+        {
+          "type": "complexity",
+          "id": "cx",
+          "x": 540,
+          "y": 0,
+          "title": "Complexity",
+          "time": "n",
+          "timeWhy": "one pass over the nodes",
+          "space": "1",
+          "spaceWhy": "just prev, curr, and next"
+        }
+      ]
+    },
+    {
+      "id": "s7",
+      "caption": "One edge case is an empty list or a single node, which returns as is.",
+      "elements": [
+        {
+          "type": "list",
+          "id": "head",
+          "x": 80,
+          "y": 0,
+          "variant": "linked",
+          "label": "head",
+          "items": [
+            "1",
+            "2",
+            "3"
+          ],
+          "links": [
+            "prev",
+            "prev"
+          ]
+        },
+        {
+          "type": "pointer",
+          "id": "prev",
+          "x": 0,
+          "y": 0,
+          "name": "prev",
+          "attach": {
+            "id": "head",
+            "index": 2
+          }
+        },
+        {
+          "type": "var",
+          "id": "curr",
+          "x": 0,
+          "y": 110,
+          "name": "curr",
+          "value": "None"
+        },
+        {
+          "type": "complexity",
+          "id": "cx",
+          "x": 540,
+          "y": 0,
+          "title": "Complexity",
+          "time": "n",
+          "timeWhy": "one pass over the nodes",
+          "space": "1",
+          "spaceWhy": "just prev, curr, and next"
+        },
+        {
+          "type": "text",
+          "id": "edge",
+          "x": 540,
+          "y": 140,
+          "variant": "sticky",
+          "text": "Empty list or a single node: return head as is.",
+          "w": 240
+        }
+      ]
+    }
+  ]
+}

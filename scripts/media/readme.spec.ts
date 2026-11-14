@@ -3,6 +3,7 @@ import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import gifenc from 'gifenc';
 import { PNG } from 'pngjs';
+import { asReturningVisitor } from '../../e2e/returning';
 
 // README 的圖：一張白板截圖（淺色、深色），和兩個視窗一起編輯的動畫（GIF）。
 // 執行：npm run media
@@ -19,6 +20,8 @@ test('still screenshots', async ({ browser }) => {
   mkdirSync(OUT, { recursive: true });
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 2, locale: 'en-US' });
   const page = await context.newPage();
+  // 拍自己的白板：當成來過的人，不會先自動播放範例
+  await asReturningVisitor(page);
   await page.goto('./');
   // 樹的深度優先搜尋：樹、堆疊、指著目前節點的指標，再記一步
   await page.getByRole('button', { name: /^Tree DFS/ }).click();
@@ -43,6 +46,8 @@ test('co-editing animation', async ({ browser }) => {
   const open = async (name: string) => {
     const context = await browser.newContext({ viewport: size, locale: 'en-US', colorScheme: 'light' });
     const page = await context.newPage();
+    // 拍自己的白板：當成來過的人，不會先自動播放範例
+    await asReturningVisitor(page);
     await named(page, name);
     return page;
   };

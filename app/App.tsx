@@ -13,10 +13,12 @@ import {
   type Locale,
 } from '../src';
 import { boardDocSchema } from '../src/schema';
+import { DEFAULT_EXAMPLE, EXAMPLE_IDS, exampleOf, isExampleId, type ExampleId } from './examples';
 
 // 獨立的白板網站：一張白板存在這個瀏覽器裡，不用登入。
 // 按「共用」會建立一個共用房間，網址後面加上 #room=…，把網址傳給別人就能一起編輯；
 // #view=… 是同一個房間只能看的連結。
+// 第一次來（還沒有自己的白板）先自動播放一個範例，#example=206 這種連結不管來過幾次都打開那個範例（app/examples.ts）。
 
 const DOC_KEY = 'dsa-whiteboard:doc';
 const LOCALE_KEY = 'dsa-whiteboard:locale';
@@ -38,6 +40,13 @@ const TEXT = {
     storageFull: '瀏覽器的儲存空間滿了，這次的修改沒有存起來。',
     saveCopyConfirm: '要用這張共用白板取代你自己的白板嗎？你原本的白板會被蓋掉。',
     savedCopy: '已存到你的白板',
+    exampleCaption: '範例：一步一步播放',
+    exampleNotSaved: '範例，不會存',
+    exampleItem: (title: string) => `範例：${title}`,
+    editExample: '拿這張來改',
+    blankBoard: '開空白白板',
+    myBoard: '我的白板',
+    replaceWithExample: '要用這個範例取代你自己的白板嗎？你原本的白板會被蓋掉。',
   },
   en: {
     switchTo: '中',
@@ -48,6 +57,13 @@ const TEXT = {
     storageFull: 'Browser storage is full, so the latest change wasn’t saved.',
     saveCopyConfirm: 'Replace your own board with this shared one? Your current board will be overwritten.',
     savedCopy: 'Saved to your board',
+    exampleCaption: 'Example, played step by step',
+    exampleNotSaved: 'Example, not saved',
+    exampleItem: (title: string) => `Example: ${title}`,
+    editExample: 'Edit this board',
+    blankBoard: 'Blank board',
+    myBoard: 'My board',
+    replaceWithExample: 'Replace your own board with this example? Your current board will be overwritten.',
   },
 } satisfies Record<Locale, unknown>;
 
@@ -68,6 +84,23 @@ function loadDoc(): BoardDoc {
   } catch {
     return EMPTY_DOC;
   }
+}
+
+/** 這個瀏覽器存過自己的白板（就算是空的）：來過、開始用了，就不再自動放範例 */
+function hasOwnBoard(): boolean {
+  return Boolean(storage()?.getItem(DOC_KEY));
+}
+
+/**
+ * 要放哪個範例：網址有 #example=… 就放那一個；沒有的話，第一次來（沒有自己的白板、也不是共用房間）放 206。
+ * 共用房間的連結一律直接進房間
+ */
+function exampleFromLocation(): ExampleId | null {
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  if (params.has('room') || params.has('view')) return null;
+  const linked = params.get('example');
+  if (isExampleId(linked)) return linked;
+  return hasOwnBoard() ? null : DEFAULT_EXAMPLE;
 }
 
 function initialLocale(): Locale {
@@ -168,16 +201,20 @@ export function App() {
   const [locale, setLocale] = useState(initialLocale);
   const [localDoc, setLocalDoc] = useState(loadDoc);
   const [room, setRoom] = useState(roomFromHash);
+  const [example, setExample] = useState(exampleFromLocation);
   /** 這個分頁建立的房間：房間是空的時候，把自己的白板放上去 */
   const [created, setCreated] = useState<string | null>(null);
   const [name, setName] = useState(() => initialName(locale));
   /** 白板現在的內容（共用時是房間的內容）：共用時放進房間、「存一份」時用 */
   const current = useRef<BoardDoc>(localDoc);
+  /** 看範例時改過的內容（哪一個範例、改成怎樣）；沒改過就用範例本身 */
+  const exampleEdits = useRef<{ id: ExampleId; doc: BoardDoc } | null>(null);
   const text = TEXT[locale];
   const theme = useTheme();
 
   // 上一頁、下一頁或手動改網址時，跟著換房間
   const onHashChange = useEffectEvent(() => {
+    setExample(exampleFromLocation());
     const next = roomFromHash();
     if (sameRoom(next, room)) return;
     setRoom(next);
@@ -240,6 +277,33 @@ export function App() {
     }
   };
 
+  /** 不看範例了：網址拿掉 #example=…，回到自己的白板 */
+  const leaveExample = () => {
+    window.history.pushState(null, '', window.location.pathname + window.location.search);
+    setExample(null);
+    setLocalDoc(loadDoc());
+  };
+
+  /** 拿範例來改：存成自己的白板（自己原本有東西就先問） */
+  const editExample = () => {
+    if (!example) return;
+    if (loadDoc().elements.length > 0 && !window.confirm(text.replaceWithExample)) return;
+    const doc = exampleEdits.current?.id === example ? exampleEdits.current.doc : exampleOf(example).doc;
+    try {
+      storage()?.setItem(DOC_KEY, JSON.stringify(doc));
+    } catch {
+      window.alert(text.storageFull);
+      return;
+    }
+    leaveExample();
+  };
+
+  /** 回到自己的白板；第一次來還沒有的話開一張空白的，存起來之後就不會再自動放範例 */
+  const closeExample = () => {
+    if (!hasOwnBoard()) storage()?.setItem(DOC_KEY, JSON.stringify(EMPTY_DOC));
+    leaveExample();
+  };
+
   const rename = (next: string) => {
     setName(next);
     storage()?.setItem(NAME_KEY, next);
@@ -264,6 +328,46 @@ export function App() {
     { label: theme.dark ? text.toLight : text.toDark, icon: theme.dark ? SUN_ICON : MOON_ICON, onSelect: theme.toggle },
     { label: text.source, icon: GITHUB_ICON, href: REPO_URL },
   ];
+
+  if (example) {
+    const shown = exampleOf(example);
+    // 換範例就改網址，連結可以直接傳給別人
+    const others: HeaderMenuItem[] = EXAMPLE_IDS.filter((id) => id !== example).map((id) => ({
+      label: text.exampleItem(exampleOf(id).title),
+      icon: id,
+      onSelect: () => (window.location.hash = `example=${id}`),
+    }));
+    return (
+      <Whiteboard
+        key={`example:${example}`}
+        locale={locale}
+        initial={shown.doc}
+        // 範例不存：按「拿這張來改」才存成自己的白板
+        onSave={() => undefined}
+        onChange={(doc) => (exampleEdits.current = { id: example, doc })}
+        title={shown.title}
+        caption={text.exampleCaption}
+        // 存檔狀態那裡說清楚：範例不會存，要按「拿這張來改」
+        savedLabel={text.exampleNotSaved}
+        exportName={`dsa-whiteboard-${example}`}
+        menu={[...others, ...menu]}
+        actions={
+          <span className="app-actions">
+            <button type="button" className="btn btn-small" onClick={closeExample}>
+              {hasOwnBoard() ? text.myBoard : text.blankBoard}
+            </button>
+            <button type="button" className="btn btn-small btn-primary" onClick={editExample}>
+              {text.editExample}
+            </button>
+          </span>
+        }
+        // 一打開就從第一步自動播放一輪，停在最後一步；說明只能看
+        startAtStep={0}
+        autoPlay
+        readOnlySteps
+      />
+    );
+  }
 
   const collab =
     room && COLLAB_URL

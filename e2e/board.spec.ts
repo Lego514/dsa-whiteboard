@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { asReturningVisitor } from './returning';
 
 /**
  * 標題列可以收起來的按鈕（匯出、語言、深淺色）：560px 以下收進「⋯」選單，要先打開。
@@ -8,6 +9,9 @@ async function headerButton(page: Page, name: string) {
   if ((page.viewportSize()?.width ?? 1280) <= 560) await page.getByRole('button', { name: /^(More|更多)$/ }).click();
   return page.getByRole('button', { name, exact: true });
 }
+
+// 這裡測的是自己的白板：當成來過的人，第一次來會自動播放的範例另外測（examples.spec.ts）
+test.beforeEach(async ({ page }) => asReturningVisitor(page));
 
 test('sketches an array with a pointer and keeps it after reloading', async ({ page }) => {
   await page.goto('./');

@@ -1,0 +1,525 @@
+{
+  "elements": [
+    {
+      "type": "dp",
+      "id": "dp",
+      "x": 0,
+      "y": 0,
+      "label": "LCS length",
+      "cells": [
+        [
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "1",
+          "1",
+          "1"
+        ],
+        [
+          "0",
+          "1",
+          "1",
+          "1"
+        ],
+        [
+          "0",
+          "1",
+          "2",
+          "2"
+        ],
+        [
+          "0",
+          "1",
+          "2",
+          "2"
+        ],
+        [
+          "0",
+          "1",
+          "2",
+          "3"
+        ]
+      ],
+      "at": {
+        "r": 5,
+        "c": 3
+      },
+      "deps": "upLeftDiag",
+      "rowHead": [
+        "",
+        "a",
+        "b",
+        "c",
+        "d",
+        "e"
+      ],
+      "colHead": [
+        "",
+        "a",
+        "c",
+        "e"
+      ]
+    },
+    {
+      "type": "var",
+      "id": "ans",
+      "x": 0,
+      "y": 330,
+      "name": "LCS",
+      "value": "\"ace\", length 3"
+    },
+    {
+      "type": "complexity",
+      "id": "cx",
+      "x": 260,
+      "y": 0,
+      "title": "Complexity",
+      "time": "m·n",
+      "timeWhy": "each cell once",
+      "space": "min(m,n)",
+      "spaceWhy": "a rolling row"
+    },
+    {
+      "type": "text",
+      "id": "edge",
+      "x": 260,
+      "y": 130,
+      "variant": "sticky",
+      "text": "An empty string: LCS is 0.",
+      "w": 240
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "caption": "The key insight is that when the last characters match, they extend the common subsequence; otherwise I drop one of them and take the better result.",
+      "elements": [
+        {
+          "type": "var",
+          "id": "a",
+          "x": 0,
+          "y": 0,
+          "name": "text1",
+          "value": "\"abcde\""
+        },
+        {
+          "type": "var",
+          "id": "b",
+          "x": 0,
+          "y": 50,
+          "name": "text2",
+          "value": "\"ace\""
+        }
+      ]
+    },
+    {
+      "id": "s2",
+      "caption": "So I use a 2D DP where dp[i][j] is the LCS of the first i characters of one string and the first j of the other.",
+      "elements": [
+        {
+          "type": "dp",
+          "id": "dp",
+          "x": 0,
+          "y": 0,
+          "label": "LCS length",
+          "cells": [
+            [
+              "0",
+              "0",
+              "0",
+              "0"
+            ],
+            [
+              "0",
+              "",
+              "",
+              ""
+            ],
+            [
+              "",
+              "",
+              "",
+              ""
+            ],
+            [
+              "",
+              "",
+              "",
+              ""
+            ],
+            [
+              "",
+              "",
+              "",
+              ""
+            ],
+            [
+              "",
+              "",
+              "",
+              ""
+            ]
+          ],
+          "at": {
+            "r": 1,
+            "c": 0
+          },
+          "deps": "upLeftDiag",
+          "rowHead": [
+            "",
+            "a",
+            "b",
+            "c",
+            "d",
+            "e"
+          ],
+          "colHead": [
+            "",
+            "a",
+            "c",
+            "e"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "s3",
+      "caption": "c matches c: dp[3][2] = dp[2][1] + 1 = 2.",
+      "elements": [
+        {
+          "type": "dp",
+          "id": "dp",
+          "x": 0,
+          "y": 0,
+          "label": "LCS length",
+          "cells": [
+            [
+              "0",
+              "0",
+              "0",
+              "0"
+            ],
+            [
+              "0",
+              "1",
+              "1",
+              "1"
+            ],
+            [
+              "0",
+              "1",
+              "1",
+              "1"
+            ],
+            [
+              "0",
+              "1",
+              "2",
+              ""
+            ],
+            [
+              "",
+              "",
+              "",
+              ""
+            ],
+            [
+              "",
+              "",
+              "",
+              ""
+            ]
+          ],
+          "at": {
+            "r": 3,
+            "c": 2
+          },
+          "deps": "upLeftDiag",
+          "rowHead": [
+            "",
+            "a",
+            "b",
+            "c",
+            "d",
+            "e"
+          ],
+          "colHead": [
+            "",
+            "a",
+            "c",
+            "e"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "caption": "For example, \"abcde\" and \"ace\" have an LCS of \"ace\", length 3.",
+      "elements": [
+        {
+          "type": "dp",
+          "id": "dp",
+          "x": 0,
+          "y": 0,
+          "label": "LCS length",
+          "cells": [
+            [
+              "0",
+              "0",
+              "0",
+              "0"
+            ],
+            [
+              "0",
+              "1",
+              "1",
+              "1"
+            ],
+            [
+              "0",
+              "1",
+              "1",
+              "1"
+            ],
+            [
+              "0",
+              "1",
+              "2",
+              "2"
+            ],
+            [
+              "0",
+              "1",
+              "2",
+              "2"
+            ],
+            [
+              "0",
+              "1",
+              "2",
+              "3"
+            ]
+          ],
+          "at": {
+            "r": 5,
+            "c": 3
+          },
+          "deps": "upLeftDiag",
+          "rowHead": [
+            "",
+            "a",
+            "b",
+            "c",
+            "d",
+            "e"
+          ],
+          "colHead": [
+            "",
+            "a",
+            "c",
+            "e"
+          ]
+        },
+        {
+          "type": "var",
+          "id": "ans",
+          "x": 0,
+          "y": 330,
+          "name": "LCS",
+          "value": "\"ace\", length 3"
+        }
+      ]
+    },
+    {
+      "id": "s5",
+      "caption": "This takes O(m times n) time and O(min(m, n)) space with a rolling row.",
+      "elements": [
+        {
+          "type": "dp",
+          "id": "dp",
+          "x": 0,
+          "y": 0,
+          "label": "LCS length",
+          "cells": [
+            [
+              "0",
+              "0",
+              "0",
+              "0"
+            ],
+            [
+              "0",
+              "1",
+              "1",
+              "1"
+            ],
+            [
+              "0",
+              "1",
+              "1",
+              "1"
+            ],
+            [
+              "0",
+              "1",
+              "2",
+              "2"
+            ],
+            [
+              "0",
+              "1",
+              "2",
+              "2"
+            ],
+            [
+              "0",
+              "1",
+              "2",
+              "3"
+            ]
+          ],
+          "at": {
+            "r": 5,
+            "c": 3
+          },
+          "deps": "upLeftDiag",
+          "rowHead": [
+            "",
+            "a",
+            "b",
+            "c",
+            "d",
+            "e"
+          ],
+          "colHead": [
+            "",
+            "a",
+            "c",
+            "e"
+          ]
+        },
+        {
+          "type": "var",
+          "id": "ans",
+          "x": 0,
+          "y": 330,
+          "name": "LCS",
+          "value": "\"ace\", length 3"
+        },
+        {
+          "type": "complexity",
+          "id": "cx",
+          "x": 260,
+          "y": 0,
+          "title": "Complexity",
+          "time": "m·n",
+          "timeWhy": "each cell once",
+          "space": "min(m,n)",
+          "spaceWhy": "a rolling row"
+        }
+      ]
+    },
+    {
+      "id": "s6",
+      "caption": "One edge case is an empty string, where the LCS is 0.",
+      "elements": [
+        {
+          "type": "dp",
+          "id": "dp",
+          "x": 0,
+          "y": 0,
+          "label": "LCS length",
+          "cells": [
+            [
+              "0",
+              "0",
+              "0",
+              "0"
+            ],
+            [
+              "0",
+              "1",
+              "1",
+              "1"
+            ],
+            [
+              "0",
+              "1",
+              "1",
+              "1"
+            ],
+            [
+              "0",
+              "1",
+              "2",
+              "2"
+            ],
+            [
+              "0",
+              "1",
+              "2",
+              "2"
+            ],
+            [
+              "0",
+              "1",
+              "2",
+              "3"
+            ]
+          ],
+          "at": {
+            "r": 5,
+            "c": 3
+          },
+          "deps": "upLeftDiag",
+          "rowHead": [
+            "",
+            "a",
+            "b",
+            "c",
+            "d",
+            "e"
+          ],
+          "colHead": [
+            "",
+            "a",
+            "c",
+            "e"
+          ]
+        },
+        {
+          "type": "var",
+          "id": "ans",
+          "x": 0,
+          "y": 330,
+          "name": "LCS",
+          "value": "\"ace\", length 3"
+        },
+        {
+          "type": "complexity",
+          "id": "cx",
+          "x": 260,
+          "y": 0,
+          "title": "Complexity",
+          "time": "m·n",
+          "timeWhy": "each cell once",
+          "space": "min(m,n)",
+          "spaceWhy": "a rolling row"
+        },
+        {
+          "type": "text",
+          "id": "edge",
+          "x": 260,
+          "y": 130,
+          "variant": "sticky",
+          "text": "An empty string: LCS is 0.",
+          "w": 240
+        }
+      ]
+    }
+  ]
+}

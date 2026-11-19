@@ -7,7 +7,7 @@
 **DSA Whiteboard**：畫資料結構和演算法的白板，從頭用 React + TypeScript 寫的（沒有用繪圖套件）。同一份程式碼有三種用法：
 
 - **套件**：`dsa-whiteboard`，發佈在 npm（https://www.npmjs.com/package/dsa-whiteboard）。主要使用者是刷題教練：https://github.com/Lego514/leetcode-coach（本機 `C:\dev\leetCode guide`），那邊也有一份 AGENTS.md。
-- **獨立網站**：https://lego514.github.io/dsa-whiteboard/ （`app/`，GitHub Pages）
+- **獨立網站**：https://dsaboard.legoli.dev/ （`app/`，GitHub Pages；自己的網域 legoli.dev 在 Cloudflare，DNS 的 `dsaboard` CNAME 指到 `lego514.github.io`、不經過 Cloudflare 的代理，Pages 設定的 custom domain 是 `dsaboard.legoli.dev`。舊網址 https://lego514.github.io/dsa-whiteboard/ 會自動轉過來；`vite.config.ts` 的 `base: './'` 是相對路徑，在根目錄和子路徑都能用）
 - **一起編輯的伺服器**：Cloudflare Worker + 每個房間一個 Durable Object（`worker/`），網址 https://dsa-whiteboard-collab.ray1998514.workers.dev
 
 公開、MIT 授權。這個 repo 也是履歷上的作品。

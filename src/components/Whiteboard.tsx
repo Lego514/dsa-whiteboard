@@ -10,6 +10,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
+import { flushSync } from 'react-dom';
 import { applyOps, diffDocs, rebaseHistory } from '../collab/ops';
 import { RoomContext, roomLabel } from '../collab/context';
 import { useCollab, type CollabOptions } from '../collab/useCollab';
@@ -59,6 +60,9 @@ const TOOLS: Tool[] = ['select', 'hand', 'arrow', 'line', 'rect', 'ellipse', 'pe
 /** 只能看的時候還有作用的按鍵：縮放、放到畫面中間、說明、關掉說明 */
 const VIEW_ONLY_KEYS: ReadonlySet<string> = new Set(['+', '=', '-', '0', '?', 'Escape']);
 const TOOL_KEYS: Record<string, Tool> = { v: 'select', h: 'hand', a: 'arrow', l: 'line', r: 'rect', o: 'ellipse', p: 'pen', e: 'eraser' };
+
+/** 會打出一個字的按鍵（數字、字母、符號）；空白鍵是拖曳畫面，輸入法組字中的不算 */
+const isTypedChar = (e: KeyboardEvent) => e.key.length === 1 && e.key !== ' ' && !e.altKey && !e.metaKey && !e.ctrlKey && !e.isComposing;
 
 type Gesture =
   | { kind: 'pan'; pointerId: number; start: m.Point; view: View }
@@ -510,6 +514,16 @@ function Editor<R>({
     setEditingId(id);
     setEditFocus(focus);
     setSelection(new Set([id]));
+  };
+  /**
+   * 選了一格直接打字：跟試算表一樣，清空這一格、開始編輯。在 keydown 裡同步畫出輸入框並拿到焦點，
+   * 按下的那個字就會打進輸入框（輸入法、大小寫都照瀏覽器自己的）
+   */
+  const typeIntoCell = (cell: { id: string; index: number }) => {
+    flushSync(() => {
+      startEditing(cell.id, cell.index);
+      setHistory((h) => m.replace(h, m.setCellValue(h.present, cell.id, cell.index, '')));
+    });
   };
   const stopEditing = () => {
     setFreshText(null);
@@ -1295,6 +1309,18 @@ function Editor<R>({
 
   // ---------- 鍵盤 ----------
 
+  /** 選著的那一格（直接打字會改它）：陣列類的格子、樹、圖、遞迴樹的節點。DP 表有自己填值的輸入框（填完跳下一格），不算 */
+  const typingCell =
+    pickedList && pickedIndex !== undefined
+      ? { id: pickedList.id, index: pickedIndex }
+      : pickedTree && pickedNode !== undefined
+        ? { id: pickedTree.id, index: pickedNode }
+        : pickedGraph && graphNode !== undefined
+          ? { id: pickedGraph.id, index: graphNode }
+          : pickedRec && recNode !== undefined
+            ? { id: pickedRec.id, index: recNode }
+            : null;
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -1348,6 +1374,9 @@ function Editor<R>({
         setSelection(new Set(doc.elements.map((el) => el.id)));
       } else if (mod) {
         return;
+      } else if (typingCell && !editingId && isTypedChar(e)) {
+        // 不 preventDefault：這個字要打進剛拿到焦點的輸入框
+        typeIntoCell(typingCell);
       } else if (pickedGraph && graphEdge !== undefined && (e.key === 'Delete' || e.key === 'Backspace')) {
         e.preventDefault();
         deleteEdgeAt(pickedGraph, graphEdge);

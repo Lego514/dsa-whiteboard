@@ -582,8 +582,11 @@ test('records steps and plays them back with notes', async ({ page }) => {
   }
   await expect(pointer).toHaveAccessibleName('Pointer i at index 3');
 
+  // 「▶ 3 步」按了就從頭播下去；暫停後回到第 1 步，一步一步看
   await page.getByRole('button', { name: 'Play all 3 steps from the start' }).click();
   const playback = page.getByRole('toolbar', { name: 'Step playback' });
+  await playback.getByRole('button', { name: 'Pause (Space)' }).click();
+  await playback.getByRole('button', { name: 'Go to step 1' }).click();
   await expect(playback).toContainText('Step 1 of 3');
   await expect(pointer).toHaveAccessibleName('Pointer i at index 0');
   await playback.getByRole('textbox', { name: 'What happens in step 1' }).fill('i starts at the first cell');
@@ -606,6 +609,48 @@ test('records steps and plays them back with notes', async ({ page }) => {
   await expect(playback).toContainText('Step 1 of 2');
   await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'Play all 2 steps from the start' })).toBeVisible();
+});
+
+test('says which step was recorded, takes its note right away, and plays the steps by itself', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Array', exact: true }).click();
+  const record = page.getByRole('button', { name: 'Save the current board as the next step (S)' });
+
+  // 記下一步：面板下面說記到第幾步，可以順手寫說明；不會自己跳進輸入框，S 照樣能一直記
+  await record.click();
+  await expect(page.getByRole('status').filter({ hasText: 'Recorded step 1' })).toBeVisible();
+  await page.keyboard.press('s');
+  await expect(page.getByRole('status').filter({ hasText: 'Recorded step 2' })).toBeVisible();
+  const note = page.getByRole('textbox', { name: 'What happens in step 2' });
+  await note.fill('Look at the first cell');
+  // 寫說明時打的字不會變成快捷鍵（s 打進說明裡，不會再記一步）
+  await note.press('s');
+  await expect(note).toHaveValue('Look at the first cells');
+  await expect(page.getByRole('button', { name: 'Play all 2 steps from the start' })).toBeVisible();
+  await note.press('Enter');
+  await expect(note).toHaveCount(0);
+
+  // 叉叉也能關掉
+  await page.keyboard.press('s');
+  const third = page.getByRole('status').filter({ hasText: 'Recorded step 3' });
+  await expect(third).toBeVisible();
+  await page.locator('.board-recorded').getByRole('button', { name: 'Close' }).click();
+  await expect(third).toHaveCount(0);
+
+  // 「▶ 3 步」按了就從第 1 步自動播下去，播完停在最後一步
+  await page.getByRole('button', { name: 'Play all 3 steps from the start' }).click();
+  const playback = page.getByRole('toolbar', { name: 'Step playback' });
+  await expect(playback.getByRole('button', { name: 'Pause (Space)' })).toBeVisible();
+  await expect(playback).toContainText('Step 3 of 3', { timeout: 15_000 });
+  await expect(playback.getByRole('button', { name: 'Play (Space)' })).toBeVisible({ timeout: 15_000 });
+  // 剛才寫的說明存在第 2 步
+  await playback.getByRole('button', { name: 'Go to step 2' }).click();
+  await expect(playback.getByRole('textbox', { name: 'What happens in step 2' })).toHaveValue('Look at the first cells');
+
+  // 播放時點說明來寫，播放會停下來，不會寫到一半換步
+  await playback.getByRole('button', { name: 'Play (Space)' }).click();
+  await playback.getByRole('textbox', { name: /^What happens in step/ }).click();
+  await expect(playback.getByRole('button', { name: 'Play (Space)' })).toBeVisible();
 });
 
 test('while playing, shows a tall board above the playback bar instead of under it', async ({ page, isMobile }) => {
@@ -1049,8 +1094,11 @@ test('traces code line by line and records each line for playback', async ({ pag
   await expect(code).toHaveAccessibleName(/^Code \(Line 5\)/);
   await expect(code.locator('[data-current]')).toHaveText(/return total/);
 
-  // 每走一步都記下了走之前那一行
+  // 每走一步都記下了走之前那一行（播放會自己往下走，先暫停回到第 1 步）
   await page.getByRole('button', { name: 'Play all 3 steps from the start' }).click();
+  const playback = page.getByRole('toolbar', { name: 'Step playback' });
+  await playback.getByRole('button', { name: 'Pause (Space)' }).click();
+  await playback.getByRole('button', { name: 'Go to step 1' }).click();
   await expect(code).toHaveAccessibleName(/^Code \(Line 1\)/);
   await page.keyboard.press('ArrowRight');
   await expect(code).toHaveAccessibleName(/^Code \(Line 2\)/);

@@ -445,6 +445,8 @@ export const en: Messages = {
       full: 'Up to 50 steps',
       count: (n) => `${n} ${n === 1 ? 'step' : 'steps'}`,
       playAll: (n) => `Play ${n === 1 ? 'the step' : `all ${n} steps`} from the start`,
+      recorded: (i) => `Recorded step ${i}`,
+      recordedPlaceholder: 'What happens here? (optional)',
       playbackLabel: 'Step playback',
       position: (i, n) => `Step ${i} of ${n}`,
       prev: 'Previous step (←)',

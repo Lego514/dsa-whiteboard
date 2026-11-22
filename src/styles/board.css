@@ -1664,6 +1664,78 @@ textarea.board-text-input {
   background: var(--board-red);
 }
 
+/* 記下一步時點點閃一下 */
+.board-record-dot-flash {
+  animation: board-record-flash 520ms ease-out;
+}
+
+@keyframes board-record-flash {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--board-red) 55%, transparent);
+  }
+  45% {
+    transform: scale(1.45);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 9px transparent;
+  }
+}
+
+/* 記下一步之後面板下面的提示：記到第幾步、這一步的說明 */
+.board-recorded {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: min(300px, calc(100vw - 24px));
+  padding: 8px 10px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--sheet);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.12);
+  animation: board-recorded-in 160ms ease-out;
+}
+
+@keyframes board-recorded-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.board-recorded-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.board-recorded-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.board-recorded-close {
+  min-width: 28px;
+  padding: 0 6px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.board-recorded-caption {
+  width: 100%;
+  margin-top: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-record-dot-flash,
+  .board-recorded {
+    animation: none;
+  }
+}
+
 .board-steps-play {
   display: inline-flex;
 }
@@ -1704,7 +1776,9 @@ textarea.board-text-input {
   }
 
   .board-top .board-steps-widget {
-    position: static;
+    /* 不再是 absolute（排在上方一排裡），但記下一步的提示要對著它放 */
+    position: relative;
+    inset: auto;
     grid-column: 1;
     justify-self: start;
   }

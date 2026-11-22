@@ -27,7 +27,7 @@ import { trieNodes } from '../lib/trie';
 import { ElementView } from './BoardElements';
 import { PlaybackBar, StepsWidget } from './BoardSteps';
 import { Dialog } from './Dialog';
-import { HelpPanel } from './HelpPanel';
+import { HelpPanel, type HelpAction } from './HelpPanel';
 import { InlineMenuItems, MoreMenu, useNarrowHeader, type HeaderMenuItem } from './HeaderMenu';
 import { NoticeProvider, useNotice } from './Notice';
 import { PasteExampleDialog } from './PasteExample';
@@ -168,6 +168,8 @@ export interface WhiteboardProps<R = unknown> {
   explain?: ExplainHooks<R>;
   /** 一起編輯：連到共用房間，內容以房間的為準 */
   collab?: CollabOptions;
+  /** 操作說明最上面多放的按鈕（例如網站的「再看一次導覽」）；按了會先收起說明 */
+  helpActions?: readonly HelpAction[];
 }
 
 /** 全螢幕的白板；內容由使用的一方存檔 */
@@ -199,6 +201,7 @@ function Editor<R>({
   exportName = 'whiteboard',
   explain,
   collab,
+  helpActions,
 }: Omit<WhiteboardProps<R>, 'locale' | 'onNotice'>) {
   const { t } = useI18n();
   const toast = useNotice();
@@ -1988,7 +1991,7 @@ function Editor<R>({
             </button>
           </div>
 
-          {showHelp && <HelpPanel />}
+          {showHelp && <HelpPanel actions={helpActions} onAction={() => setShowHelp(false)} />}
         </div>
       </div>
 

@@ -1278,6 +1278,13 @@ textarea.board-text-input {
   font-size: 15px;
 }
 
+.board-help-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 0;
+}
+
 .board-help h3 {
   margin: 14px 0 6px;
   color: var(--ink-3);

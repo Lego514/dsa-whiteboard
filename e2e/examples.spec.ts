@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { asReturningVisitor } from './returning';
+import { asReturningVisitor, skipTour, tour } from './returning';
 
 // 網站上的範例：第一次來自動播放 206 一輪；#example=… 的連結（放在履歷、README）不管來過幾次都打開那一題；
 // 範例不存，按「拿這張來改」才變成自己的白板
@@ -59,6 +59,7 @@ test('starts a blank board from the example, and does not show the example again
   await page.goto('./');
   await expect(heading(page)).toHaveText('206. Reverse Linked List');
   await page.getByRole('button', { name: 'Blank board' }).click();
+  await skipTour(page);
   await expect(heading(page)).toHaveText('DSA Whiteboard');
   await expect(page.getByRole('complementary', { name: 'Elements' })).toBeVisible();
   await expect(position(page)).toHaveCount(0);
@@ -70,6 +71,7 @@ test('starts a blank board from the example, and does not show the example again
 test('keeps the example as my own board with Edit this board', async ({ page }) => {
   await page.goto('./');
   await page.getByRole('button', { name: 'Edit this board' }).click();
+  await skipTour(page);
   await expect(heading(page)).toHaveText('DSA Whiteboard');
   await expect(page).not.toHaveURL(/#/);
   // 範例的內容和步驟都變成自己的，可以編輯，重新整理還在
@@ -159,6 +161,7 @@ test('explains why the elements do nothing while an example plays, and offers a 
 
   await array.click({ force: true });
   await prompt.getByRole('button', { name: 'Blank board' }).click();
+  await skipTour(page);
   await expect(heading(page)).toHaveText('DSA Whiteboard');
   await expect(prompt).toHaveCount(0);
   // 現在可以畫了
@@ -182,4 +185,38 @@ test('asks before an example replaces a board I already drew on', async ({ page 
   await expect(heading(page)).toHaveText('206. Reverse Linked List');
   await page.getByRole('button', { name: 'My board' }).click();
   await expect(page.getByRole('group', { name: /^Array nums/ })).toBeVisible();
+});
+
+test('shows a four-step tour the first time I start drawing, once, and replays it from Help', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Blank board' }).click();
+  const card = tour(page);
+  await expect(card).toBeVisible();
+  // 一步一步：元件、工具列、記步驟、操作說明
+  for (const [i, title] of ['Elements', 'Toolbar', 'Record steps', 'Help'].entries()) {
+    await expect(card.getByRole('heading')).toHaveText(title);
+    await expect(card).toContainText(`${i + 1} of 4`);
+    if (i < 3) await card.getByRole('button', { name: 'Next' }).click();
+  }
+  await card.getByRole('button', { name: 'Back' }).click();
+  await expect(card.getByRole('heading')).toHaveText('Record steps');
+  await card.getByRole('button', { name: 'Next' }).click();
+  await card.getByRole('button', { name: 'Start drawing' }).click();
+  await expect(card).toHaveCount(0);
+
+  // 看過就不再出現
+  await page.reload();
+  await expect(heading(page)).toHaveText('DSA Whiteboard');
+  await expect(card).toHaveCount(0);
+
+  // 「?」裡可以再看一次；導覽開著時白板的快捷鍵不作用（S 不會記一步），Esc 關掉
+  await page.getByRole('button', { name: 'How to use', exact: true }).click();
+  await page.getByRole('button', { name: 'Show the tour again' }).click();
+  await expect(card.getByRole('heading')).toHaveText('Elements');
+  await page.keyboard.press('ArrowRight');
+  await expect(card.getByRole('heading')).toHaveText('Toolbar');
+  await page.keyboard.press('s');
+  await page.keyboard.press('Escape');
+  await expect(card).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Play all 0 steps/ })).toBeDisabled();
 });

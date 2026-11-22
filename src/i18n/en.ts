@@ -247,7 +247,7 @@ export const en: Messages = {
       },
       {
         title: 'Arrows, lines, and frames',
-        body: 'Drag an arrow or line from one element to another and it follows them when they move; use lines for undirected edges. Drag on the board to draw a rectangle or ellipse, and drag its bottom-right corner to resize it.',
+        body: 'Drag an arrow or line from one element to another and it follows them when they move; start or end it on an array cell or a tree or graph node to connect just that cell. Select it and drag the dot in the middle to curve it. Use lines for undirected edges. Drag on the board to draw a rectangle or ellipse, and drag its bottom-right corner to resize it. Arrows, lines, and frames can be dashed.',
       },
       {
         title: 'Steps',
@@ -325,6 +325,9 @@ export const en: Messages = {
       removeCol: 'Remove column',
       makeLine: 'Make it a line',
       makeArrow: 'Add an arrowhead',
+      makeDashed: 'Make it dashed',
+      makeSolid: 'Make it solid',
+      straighten: 'Straighten',
       pointerLeft: 'Pointer left',
       pointerRight: 'Pointer right',
       addPointer: '+ Pointer',

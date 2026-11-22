@@ -246,7 +246,7 @@ export const zhTW = {
       },
       {
         title: '箭頭、直線和框框',
-        body: '箭頭和直線從一個元件拖到另一個元件，元件移動時會跟著走；無向圖的邊用直線。矩形框和圓形框在畫布上拖曳畫出來，選取後拖右下角調整大小。',
+        body: '箭頭和直線從一個元件拖到另一個元件，元件移動時會跟著走；從陣列的一格或樹、圖的一個節點拉出來（或拉到那裡），就只接那一格。選取後拖線中間的圓點可以拉彎。無向圖的邊用直線。矩形框和圓形框在畫布上拖曳畫出來，選取後拖右下角調整大小。箭頭、直線和框框都可以改成虛線。',
       },
       {
         title: '逐步播放',
@@ -302,8 +302,11 @@ export const zhTW = {
       removeRow: '減一列',
       addCol: '加一欄',
       removeCol: '減一欄',
-      makeLine: '改成直線',
+      makeLine: '改成線條',
       makeArrow: '改成箭頭',
+      makeDashed: '改成虛線',
+      makeSolid: '改成實線',
+      straighten: '拉直',
       pointerLeft: '指標左移',
       pointerRight: '指標右移',
       pointerToParent: '到父節點',

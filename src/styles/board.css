@@ -413,6 +413,19 @@
   stroke-dasharray: 6 4;
 }
 
+/* 自己選的虛線（箭頭、直線、框框）；比畫到一半的虛線長，看得出是設定 */
+.board-dashed {
+  stroke-dasharray: 9 7;
+}
+
+/* 選取一條箭頭時，線中間拉彎的把手 */
+.board-bend-handle {
+  fill: var(--sheet);
+  stroke: var(--pen);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
 /* 框選的範圍 */
 .board-marquee {
   fill: var(--pen);

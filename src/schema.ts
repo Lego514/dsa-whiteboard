@@ -11,7 +11,11 @@ const text = (max: number) => z.string().max(max);
 const boardElementId = z.string().regex(/^[a-z0-9]{1,12}$/);
 const coord = z.number().min(-1e6).max(1e6);
 const cell = text(40);
-const boardEnd = z.union([z.object({ id: boardElementId }), z.object({ x: coord, y: coord })]);
+/**
+ * 箭頭的一端：連在元件上（cell 是接在哪一格、哪個節點，跟指標的 index 一樣；沒有就是整個元件），或停在一個點。
+ * 舊版不認得 cell 會丟掉它，箭頭就接在整個元件上，不會壞掉
+ */
+const boardEnd = z.union([z.object({ id: boardElementId, cell: z.number().int().min(0).max(63).optional() }), z.object({ x: coord, y: coord })]);
 const placed = { id: boardElementId, x: coord, y: coord };
 
 /** 白板上的一個元件；陣列、表格這些結構化元件存的是內容，畫面依內容排版 */
@@ -74,6 +78,8 @@ export const boardElementSchema = z.discriminatedUnion('type', [
     w: z.number().min(8).max(4000),
     h: z.number().min(8).max(4000),
     color: z.enum(BOARD_COLORS),
+    /** 虛線框；舊版不認得會畫成實線 */
+    dash: z.literal(true).optional(),
   }),
   z.object({
     type: z.literal('pointer'),
@@ -94,6 +100,10 @@ export const boardElementSchema = z.discriminatedUnion('type', [
     color: z.enum(BOARD_COLORS),
     /** none 是沒有箭頭的直線（例如無向圖的邊）；沒寫就是有箭頭 */
     head: z.enum(['end', 'none']).optional(),
+    /** 虛線；舊版不認得會畫成實線 */
+    dash: z.literal(true).optional(),
+    /** 拉彎：曲線正中間離兩端連線的中點多遠（往左邊為正）；沒寫或 0 是直的。舊版不認得會畫成直線 */
+    bend: z.number().int().min(-4000).max(4000).optional(),
   }),
   /** 圖：節點自動排成一圈；邊從 a 連到 b（有向時是 a → b），可以有權重、可以標記成走過 */
   z.object({

@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useId, useRef, useState, useSyncExternalStore } from 'react';
 import {
   EMPTY_DOC,
   guestName,
@@ -12,6 +12,7 @@ import {
   type HeaderMenuItem,
   type Locale,
 } from '../src';
+import { useNarrowHeader } from '../src/components/HeaderMenu';
 import { boardDocSchema } from '../src/schema';
 import { DEFAULT_EXAMPLE, EXAMPLE_IDS, exampleOf, isExampleId, type ExampleId } from './examples';
 
@@ -42,6 +43,8 @@ const TEXT = {
     savedCopy: '已存到你的白板',
     exampleCaption: '範例：一步一步播放',
     exampleNotSaved: '範例，不會存',
+    notSaved: '不會存',
+    examples: '範例',
     exampleItem: (title: string) => `範例：${title}`,
     editExample: '拿這張來改',
     blankBoard: '開空白白板',
@@ -59,6 +62,8 @@ const TEXT = {
     savedCopy: 'Saved to your board',
     exampleCaption: 'Example, played step by step',
     exampleNotSaved: 'Example, not saved',
+    notSaved: 'Not saved',
+    examples: 'Examples',
     exampleItem: (title: string) => `Example: ${title}`,
     editExample: 'Edit this board',
     blankBoard: 'Blank board',
@@ -197,6 +202,102 @@ const GITHUB_ICON = (
 
 
 
+/** 比這個窄，標題列放不下整組範例按鈕，改成一個下拉選單（ExamplePicker）；再窄（白板的標題列收起來時）收進「⋯」 */
+const COMPACT_EXAMPLES = '(max-width: 960px)';
+
+function subscribeCompact(listener: () => void): () => void {
+  const media = window.matchMedia(COMPACT_EXAMPLES);
+  media.addEventListener('change', listener);
+  return () => media.removeEventListener('change', listener);
+}
+
+function useCompactExamples(): boolean {
+  return useSyncExternalStore(
+    subscribeCompact,
+    () => window.matchMedia(COMPACT_EXAMPLES).matches,
+    () => false,
+  );
+}
+
+/**
+ * 寬的畫面在標題列上切換範例：按鈕寫題型（串列、動態規劃、圖），不寫題號，看不懂題號的人也知道有哪些；
+ * 滑鼠停上去看完整題名。窄一點的畫面放不下，見 COMPACT_EXAMPLES。
+ */
+function ExampleSwitcher({ current, locale, label }: { current: ExampleId; locale: Locale; label: string }) {
+  return (
+    <span className="app-examples" role="group" aria-label={label}>
+      <span className="app-examples-label" aria-hidden>
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+          <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z" />
+        </svg>
+        {label}
+      </span>
+      {EXAMPLE_IDS.map((id) => {
+        const { title, topic } = exampleOf(id);
+        return (
+          <button
+            key={id}
+            type="button"
+            className="app-example"
+            aria-pressed={id === current}
+            aria-label={`${topic[locale]}: ${title}`}
+            title={title}
+            // 換範例就改網址，連結可以直接傳給別人
+            onClick={() => id !== current && (window.location.hash = `example=${id}`)}
+          >
+            {topic[locale]}
+          </button>
+        );
+      })}
+    </span>
+  );
+}
+
+/** 中等寬度：一個按鈕寫現在的題型，打開列出三個範例的完整題名和題型 */
+function ExamplePicker({ current, locale, label }: { current: ExampleId; locale: Locale; label: string }) {
+  const id = useId();
+  const menu = useRef<HTMLDivElement>(null);
+  return (
+    <>
+      <button
+        type="button"
+        className="btn btn-small app-example-pick"
+        popoverTarget={id}
+        aria-label={`${label}: ${exampleOf(current).title}`}
+        title={label}
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+          <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z" />
+        </svg>
+        {exampleOf(current).topic[locale]}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      <div id={id} ref={menu} className="board-room-menu board-more-menu app-example-menu" popover="auto" aria-label={label}>
+        {EXAMPLE_IDS.map((example) => {
+          const { title, topic } = exampleOf(example);
+          return (
+            <button
+              key={example}
+              type="button"
+              className="board-more-item"
+              aria-current={example === current || undefined}
+              onClick={() => {
+                menu.current?.hidePopover();
+                window.location.hash = `example=${example}`;
+              }}
+            >
+              <span className="app-example-title">{title}</span>
+              <span className="app-example-topic">{topic[locale]}</span>
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
 export function App() {
   const [locale, setLocale] = useState(initialLocale);
   const [localDoc, setLocalDoc] = useState(loadDoc);
@@ -211,6 +312,8 @@ export function App() {
   const exampleEdits = useRef<{ id: ExampleId; doc: BoardDoc } | null>(null);
   const text = TEXT[locale];
   const theme = useTheme();
+  const narrowHeader = useNarrowHeader();
+  const compactExamples = useCompactExamples();
 
   // 上一頁、下一頁或手動改網址時，跟著換房間
   const onHashChange = useEffectEvent(() => {
@@ -331,12 +434,20 @@ export function App() {
 
   if (example) {
     const shown = exampleOf(example);
+    // 寬的畫面用 ExampleSwitcher、中等寬度用 ExamplePicker；手機上收進白板的「⋯」選單，寫完整題名。
     // 換範例就改網址，連結可以直接傳給別人
-    const others: HeaderMenuItem[] = EXAMPLE_IDS.filter((id) => id !== example).map((id) => ({
-      label: text.exampleItem(exampleOf(id).title),
-      icon: id,
-      onSelect: () => (window.location.hash = `example=${id}`),
-    }));
+    const others: HeaderMenuItem[] = narrowHeader
+      ? EXAMPLE_IDS.filter((id) => id !== example).map((id) => ({
+          label: text.exampleItem(exampleOf(id).title),
+          icon: id,
+          onSelect: () => (window.location.hash = `example=${id}`),
+        }))
+      : [];
+    const switcher = narrowHeader ? null : compactExamples ? (
+      <ExamplePicker current={example} locale={locale} label={text.examples} />
+    ) : (
+      <ExampleSwitcher current={example} locale={locale} label={text.examples} />
+    );
     return (
       <Whiteboard
         key={`example:${example}`}
@@ -347,12 +458,13 @@ export function App() {
         onChange={(doc) => (exampleEdits.current = { id: example, doc })}
         title={shown.title}
         caption={text.exampleCaption}
-        // 存檔狀態那裡說清楚：範例不會存，要按「拿這張來改」
-        savedLabel={text.exampleNotSaved}
+        // 存檔狀態那裡說清楚：範例不會存，要按「拿這張來改」。寬的畫面標題上已經寫「範例」，只寫不會存
+        savedLabel={narrowHeader ? text.exampleNotSaved : text.notSaved}
         exportName={`dsa-whiteboard-${example}`}
         menu={[...others, ...menu]}
         actions={
-          <span className="app-actions">
+          <span className="app-actions app-actions-example">
+            {switcher}
             <button type="button" className="btn btn-small" onClick={closeExample}>
               {hasOwnBoard() ? text.myBoard : text.blankBoard}
             </button>

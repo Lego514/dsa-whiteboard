@@ -111,6 +111,15 @@ export function HelpPanel({ actions = [], onAction }: HelpPanelProps = {}) {
         [<Mouse action="double" />, k.edit],
         [
           <>
+            <Mouse action="click" />
+            <Plus />
+            <Key>1</Key>
+            <Key>A</Key>
+          </>,
+          k.typeCell,
+        ],
+        [
+          <>
             <Key>Enter</Key>
             <Or />
             <Key>Esc</Key>

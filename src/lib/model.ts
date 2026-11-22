@@ -1988,6 +1988,32 @@ export function setDpValue(doc: BoardDoc, id: string, cell: DpCell, value: strin
 }
 
 /**
+ * 改一格的值（陣列、堆疊、佇列、堆積、鏈結串列的格子，樹、圖、遞迴樹的節點；index 跟選取時一樣）。
+ * 選了一格直接打字時先清空這一格，跟試算表一樣。不是這些元件或沒有這一格就不動
+ */
+export function setCellValue(doc: BoardDoc, id: string, index: number, value: string): BoardDoc {
+  const el = findElement(doc, id);
+  if (!el) return doc;
+  const replace = <T,>(list: readonly T[], next: (old: T) => T) => list.map((v, i) => (i === index ? next(v) : v));
+  switch (el.type) {
+    case 'list':
+    case 'graph':
+      if (index < 0 || index >= (el.type === 'list' ? el.items : el.nodes).length) return doc;
+      return el.type === 'list'
+        ? updateElement<ElementOf<'list'>>(doc, id, { items: replace(el.items, () => value) })
+        : updateElement<ElementOf<'graph'>>(doc, id, { nodes: replace(el.nodes, () => value) });
+    case 'tree':
+      if (el.nodes[index] == null) return doc;
+      return updateElement<ElementOf<'tree'>>(doc, id, { nodes: replace(el.nodes, () => value) });
+    case 'recursion':
+      if (!el.nodes[index]) return doc;
+      return updateElement<ElementOf<'recursion'>>(doc, id, { nodes: replace(el.nodes, (node) => ({ ...node, text: value })) });
+    default:
+      return doc;
+  }
+}
+
+/**
  * 填正在填的那一格：寫進值；要記錄的話把這一刻存成一步（說明寫 dp[i][j] = 值，箭頭也一起存），
  * 再移到下一個還沒填的格子。
  */

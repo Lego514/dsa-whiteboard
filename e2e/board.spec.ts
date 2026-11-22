@@ -742,6 +742,43 @@ test('builds a linked list from text, flips a link, and points the tail back', a
   await expect(selbar.getByRole('button', { name: 'Remove cycle' })).toBeVisible();
 });
 
+test('types over a picked cell or node like a spreadsheet', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Array', exact: true }).click();
+  const array = page.getByRole('group', { name: /^Array nums/ });
+
+  // 點一格直接打字：換掉原本的值，Enter 打完；方向鍵選下一格再打
+  await array.locator('[data-cell="1"]').click();
+  await page.keyboard.type('42');
+  await page.keyboard.press('Enter');
+  await expect(array).toHaveAccessibleName('Array nums: 1, 42, 3, 4');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.type('x');
+  await page.keyboard.press('Enter');
+  await expect(array).toHaveAccessibleName('Array nums: 1, 42, x, 4');
+  // 字母也是值，不是快捷鍵：s 不會記一步、p 不會換成畫筆
+  await page.keyboard.type('sp');
+  await page.keyboard.press('Escape');
+  await expect(array).toHaveAccessibleName('Array nums: 1, 42, sp, 4');
+  await expect(page.getByRole('button', { name: 'Play all 0 steps from the start' })).toBeDisabled();
+  // 復原一次回到打字前
+  await page.getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
+  await expect(array).toHaveAccessibleName('Array nums: 1, 42, x, 4');
+
+  // 沒選格子時字母照樣是快捷鍵
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('s');
+  await expect(page.getByRole('button', { name: 'Play the step from the start' })).toBeEnabled();
+
+  // 樹的節點也一樣
+  await page.getByRole('button', { name: 'Binary tree', exact: true }).click();
+  const tree = page.getByRole('group', { name: /^Binary tree root/ });
+  await tree.locator('[data-cell="2"]').click();
+  await page.keyboard.type('7');
+  await page.keyboard.press('Enter');
+  await expect(tree).toHaveAccessibleName('Binary tree root: [1,2,7]');
+});
+
 test('builds a binary tree from LeetCode’s format and edits it node by node', async ({ page, isMobile }) => {
   await page.goto('./');
   await page.getByRole('button', { name: 'Binary tree', exact: true }).click();

@@ -159,6 +159,7 @@ export const en: Messages = {
     or: 'or',
     keys: {
       edit: 'Edit an element',
+      typeCell: 'Pick a cell or node, then type to replace its value',
       finish: 'Finish editing',
       box: 'Drag on empty space: box select',
       addSelect: 'Add to the selection',
@@ -186,7 +187,7 @@ export const en: Messages = {
       },
       {
         title: 'Arrays and pointers',
-        body: 'Drop a pointer below an array to snap it to a cell; select an array first and click Pointer to put one on the first cell. Click a cell to select just that cell: highlight it, add a pointer, or insert or delete cells. With an array selected, the + at the end adds a cell.',
+        body: 'Drop a pointer below an array to snap it to a cell; select an array first and click Pointer to put one on the first cell. Click a cell to select just that cell: type to replace its value, highlight it, add a pointer, or insert or delete cells. With an array selected, the + at the end adds a cell.',
       },
       {
         title: 'Linked list',

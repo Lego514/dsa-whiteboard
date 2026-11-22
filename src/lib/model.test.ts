@@ -59,6 +59,7 @@ import {
   resizeShape,
   resizeTable,
   setCellColor,
+  setCellValue,
   shapeFromDrag,
   shiftPointer,
   sizeOf,
@@ -257,6 +258,34 @@ describe('single cells', () => {
   it('adds a pointer on a cell with the next free name', () => {
     const doc = addPointerAt(boardWithArray(), 'arr', 2, 'pk');
     expect(pointer(doc, 'pk')).toMatchObject({ name: 'k', attach: { id: 'arr', index: 2 } });
+  });
+});
+
+describe('typing into a selected cell', () => {
+  const make = (kind: Parameters<typeof createElement>[0]) => ({ elements: [createElement(kind, { x: 0, y: 0 }, 'e', texts)] }) as BoardDoc;
+  const el = <T extends BoardDoc['elements'][number]['type']>(doc: BoardDoc) => doc.elements[0] as ElementOf<T>;
+
+  it('replaces one array cell, or one tree, graph or recursion node', () => {
+    expect(el<'list'>(setCellValue(make('array'), 'e', 1, '9')).items).toEqual(['1', '9', '3', '4']);
+    const tree = make('binaryTree');
+    expect(el<'tree'>(setCellValue(tree, 'e', 0, '7')).nodes[0]).toBe('7');
+    expect(el<'graph'>(setCellValue(make('graph'), 'e', 2, 'X')).nodes[2]).toBe('X');
+    const rec = setCellValue(make('recursionTree'), 'e', 0, 'f(5)');
+    expect(el<'recursion'>(rec).nodes[0].text).toBe('f(5)');
+  });
+
+  it('leaves the board alone for a missing cell, an empty tree slot, a DP table, or another element', () => {
+    const array = make('array');
+    expect(setCellValue(array, 'e', 9, '1')).toBe(array);
+    expect(setCellValue(array, 'nope', 0, '1')).toBe(array);
+    const tree = make('binaryTree');
+    const hole = el<'tree'>(tree).nodes.findIndex((v) => v === null);
+    if (hole >= 0) expect(setCellValue(tree, 'e', hole, '1')).toBe(tree);
+    // DP 表有自己填值的輸入框，便利貼沒有格子
+    for (const kind of ['dpTable', 'sticky'] as const) {
+      const other = make(kind);
+      expect(setCellValue(other, 'e', 0, '1')).toBe(other);
+    }
   });
 });
 

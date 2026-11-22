@@ -13,8 +13,8 @@ test('plays the 206 example once on a first visit, then stops on the last step',
   await expect(heading(page)).toHaveText('206. Reverse Linked List');
   // 手機上標題下面那行換成存檔狀態，只在寬的畫面看得到
   if ((page.viewportSize()?.width ?? 1280) > 560) await expect(page.getByText('Example, played step by step')).toBeVisible();
-  // 範例不會存：存檔狀態那裡說清楚
-  await expect(page.locator('.board-save')).toHaveText('Example, not saved');
+  // 範例不會存：存檔狀態那裡說清楚（寬的畫面標題上面已經寫是範例，只寫不會存）
+  await expect(page.locator('.board-save')).toHaveText((page.viewportSize()?.width ?? 1280) > 560 ? 'Not saved' : 'Example, not saved');
   // 一打開就在播放：第一步，說明是講法的第一句
   await expect(position(page)).toHaveText('Step 1 of 7');
   await expect(page.getByText(/^The key insight is that reversing a list/)).toBeVisible();
@@ -87,10 +87,17 @@ test('opens an example from a link even for a returning visitor, and switches be
   await expect(heading(page)).toHaveText('1143. Longest Common Subsequence');
   await expect(position(page)).toHaveText('Step 1 of 6');
 
-  // 換範例：網址跟著換，可以直接傳給別人
+  // 換範例：網址跟著換，可以直接傳給別人。寬的畫面按題型（看不懂題號也知道是哪一種），手機上在「⋯」選單裡
   const width = page.viewportSize()?.width ?? 1280;
-  if (width <= 560) await page.getByRole('button', { name: 'More' }).click();
-  await page.getByRole('button', { name: 'Example: 200. Number of Islands' }).click();
+  if (width <= 560) {
+    await page.getByRole('button', { name: 'More' }).click();
+    await page.getByRole('button', { name: 'Example: 200. Number of Islands' }).click();
+  } else {
+    const examples = page.getByRole('group', { name: 'Examples' });
+    await expect(examples.getByRole('button', { pressed: true })).toHaveText('DP');
+    await examples.getByRole('button', { name: 'Graph: 200. Number of Islands' }).click();
+    await expect(examples.getByRole('button', { pressed: true })).toHaveText('Graph');
+  }
   await expect(heading(page)).toHaveText('200. Number of Islands');
   await expect(page).toHaveURL(/#example=200$/);
 
@@ -98,6 +105,20 @@ test('opens an example from a link even for a returning visitor, and switches be
   await page.getByRole('button', { name: 'My board' }).click();
   await expect(heading(page)).toHaveText('DSA Whiteboard');
   await expect(page).not.toHaveURL(/#/);
+});
+
+test('switches examples from a menu when the header is too narrow for the topic buttons', async ({ page }) => {
+  test.skip((page.viewportSize()?.width ?? 1280) <= 560, '手機上換範例在「⋯」選單裡，上一個測試測過');
+  await page.setViewportSize({ width: 800, height: 700 });
+  await page.goto('./#example=206');
+  await expect(page.getByRole('group', { name: 'Examples' })).toHaveCount(0);
+  // 按鈕寫現在的題型，打開列出三個範例的完整題名
+  await page.getByRole('button', { name: 'Examples: 206. Reverse Linked List' }).click();
+  await expect(page.getByRole('button', { name: /^206\. Reverse Linked List/ })).toHaveAttribute('aria-current', 'true');
+  await page.getByRole('button', { name: /^1143\. Longest Common Subsequence/ }).click();
+  await expect(heading(page)).toHaveText('1143. Longest Common Subsequence');
+  await expect(page).toHaveURL(/#example=1143$/);
+  await expect(page.getByRole('button', { name: 'Examples: 1143. Longest Common Subsequence' })).toHaveText('DP');
 });
 
 test('asks before an example replaces a board I already drew on', async ({ page }) => {

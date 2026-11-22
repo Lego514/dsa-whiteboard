@@ -1,4 +1,4 @@
-import type { BoardDoc } from '../src';
+import type { BoardDoc, Locale } from '../src';
 import { boardDocSchema } from '../src/schema';
 import reverseList from './examples/206.json';
 import islands from './examples/200.json';
@@ -18,14 +18,31 @@ export interface Example {
   id: ExampleId;
   /** LeetCode 的題號和題名，英文和中文畫面都一樣 */
   title: string;
+  /** 標題列上切換範例的按鈕寫的題型：看不懂題號的人也知道三個範例各在畫什麼 */
+  topic: Record<Locale, string>;
   doc: BoardDoc;
 }
 
 /** 讀進來的檔案先照白板的格式檢查一次，壞掉的話在測試就會發現 */
 const EXAMPLES: Record<ExampleId, Example> = {
-  '206': { id: '206', title: '206. Reverse Linked List', doc: boardDocSchema.parse(reverseList) },
-  '1143': { id: '1143', title: '1143. Longest Common Subsequence', doc: boardDocSchema.parse(lcs) },
-  '200': { id: '200', title: '200. Number of Islands', doc: boardDocSchema.parse(islands) },
+  '206': {
+    id: '206',
+    title: '206. Reverse Linked List',
+    topic: { en: 'Linked list', 'zh-TW': '串列' },
+    doc: boardDocSchema.parse(reverseList),
+  },
+  '1143': {
+    id: '1143',
+    title: '1143. Longest Common Subsequence',
+    topic: { en: 'DP', 'zh-TW': '動態規劃' },
+    doc: boardDocSchema.parse(lcs),
+  },
+  '200': {
+    id: '200',
+    title: '200. Number of Islands',
+    topic: { en: 'Graph', 'zh-TW': '圖' },
+    doc: boardDocSchema.parse(islands),
+  },
 };
 
 export function isExampleId(value: string | null | undefined): value is ExampleId {

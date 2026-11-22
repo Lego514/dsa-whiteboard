@@ -17,3 +17,126 @@
     margin-left: auto;
   }
 }
+
+/* 寬的畫面在標題列上切換範例：一組相連的按鈕，寫題型，現在看的那個亮起來 */
+.app-examples {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 6px;
+}
+
+.app-examples-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.app-examples-label svg {
+  width: 14px;
+  height: 14px;
+}
+
+.app-example {
+  min-height: 30px;
+  padding: 3px 10px;
+  border: 1px solid var(--rule-strong);
+  background: var(--sheet);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.app-example + .app-example {
+  margin-left: -7px;
+}
+
+.app-example:first-of-type {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.app-example:last-of-type {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.app-example:hover {
+  background: var(--sheet-2);
+  color: var(--ink);
+}
+
+/* 現在看的範例用白板的螢光筆黃：一眼看得到，又不跟藍色的「拿這張來改」搶 */
+.app-example[aria-pressed='true'] {
+  position: relative;
+  border-color: var(--rule-strong);
+  background: var(--marker);
+  color: var(--marker-ink);
+  cursor: default;
+}
+
+.app-example[aria-pressed='true']:hover {
+  background: var(--marker);
+  color: var(--marker-ink);
+}
+
+.app-example:focus-visible {
+  position: relative;
+  z-index: 1;
+}
+
+/* 中等寬度：標題列擠，拿掉「範例」兩個字和「不會存」（標題上面已經寫是範例），題名才放得下。
+   手機上（560 以下）存檔狀態換到標題上面那行，照樣顯示 */
+@media (min-width: 561px) and (max-width: 1040px) {
+  .app-examples-label,
+  .board-head:has(.app-actions-example) .board-save {
+    display: none;
+  }
+}
+
+/* 中等寬度的下拉選單：每一項左邊是題名、右邊是題型，現在看的那一項亮起來 */
+.app-example-pick {
+  background: var(--marker);
+  color: var(--marker-ink);
+}
+
+.app-example-pick:hover {
+  background: var(--marker);
+  color: var(--marker-ink);
+  border-color: var(--ink-3);
+}
+
+.app-example-pick svg {
+  width: 14px;
+  height: 14px;
+}
+
+.app-example-menu {
+  min-width: 340px;
+  max-width: calc(100vw - 24px);
+}
+
+.app-example-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-example-menu .board-more-item {
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.app-example-menu .board-more-item[aria-current='true'] {
+  background: var(--marker);
+  color: var(--marker-ink);
+}
+
+.app-example-topic {
+  color: var(--ink-3);
+  font-size: 13px;
+}

@@ -23,6 +23,7 @@ import {
   checkpoint,
   commit,
   contentBounds,
+  elementBounds,
   freeSpot,
   createElement,
   distanceToShapeEdge,
@@ -49,6 +50,7 @@ import {
   setStepCaption,
   restoreStep,
   stepDoc,
+  stepFocus,
   clearElements,
   MAX_STEPS,
   hitConnector,
@@ -683,6 +685,28 @@ describe('steps', () => {
     expect(doc.steps?.[0].caption).toBe('j moves right');
     doc = deleteStep(doc, 0);
     expect(doc).not.toHaveProperty('steps');
+  });
+
+  it('focuses on what each step added or changed, and on the whole step otherwise', () => {
+    let doc = captureStep(boardWithArray(), 's1');
+    const note = createElement('sticky', { x: 900, y: 600 }, 'n', texts);
+    doc = addElement(doc, note);
+    doc = captureStep(doc, 's2');
+    doc = moveElements(doc, new Set(['arr']), 0, 40);
+    doc = captureStep(doc, 's3');
+    doc = removeElements(doc, new Set(['n']));
+    doc = captureStep(doc, 's4');
+
+    const whole = (i: number) => contentBounds(stepDoc(doc, i));
+    // 第一步沒有上一步可以比：整步
+    expect(stepFocus(doc, 0)).toEqual(whole(0));
+    // 第二步只加了便利貼：只看便利貼
+    expect(stepFocus(doc, 1)).toEqual(elementBounds(stepDoc(doc, 1), findElement(stepDoc(doc, 1), 'n')!));
+    // 第三步移了陣列：陣列的新位置
+    expect(stepFocus(doc, 2)).toEqual(elementBounds(stepDoc(doc, 2), findElement(stepDoc(doc, 2), 'arr')!));
+    // 第四步只刪了東西：整步
+    expect(stepFocus(doc, 3)).toEqual(whole(3));
+    expect(stepFocus(EMPTY_DOC, 0)).toBeNull();
   });
 
   it('stops at the step limit', () => {

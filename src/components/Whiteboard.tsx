@@ -103,6 +103,39 @@ const clampZoom = (zoom: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom))
  */
 const READABLE_ZOOM = 0.5;
 
+/** 「全部顯示」最多放大到多少：只有一兩個小元件時不會大得嚇人 */
+const FIT_MAX_ZOOM = 1.25;
+/** 內容和畫面邊緣至少留多少（螢幕像素） */
+const FIT_PAD = 60;
+/**
+ * 整張白板要縮到比這小才放得下（手機）時，播放不再停在全部的畫面，而是跟著每一步改的地方走：
+ * 在 50% 以下字小到讀不了，而且兩邊會被切掉
+ */
+const FOLLOW_BELOW = 0.6;
+/** 跟著步驟走時最多放大到 100%：只改了一個小指標時不會突然很大 */
+const FOLLOW_MAX_ZOOM = 1;
+/** 跟著步驟走時邊緣留少一點：手機只有 390 寬，兩邊各留 60 就少了三分之一 */
+const FOLLOW_PAD = 24;
+/** 畫面滑到下一步的時間，跟元件滑到新位置（board.css 的 0.35s）差不多 */
+const GLIDE_MS = 350;
+
+/** 擺內容的空間（畫布的螢幕座標）：播放列蓋在下面時排在它上面，不然高的白板最下面會被蓋住（至少留一半的高度） */
+function fitArea(node: HTMLElement): { w: number; h: number } {
+  const r = node.getBoundingClientRect();
+  const bar = node.querySelector<HTMLElement>('.board-playback')?.getBoundingClientRect();
+  return { w: r.width, h: bar ? Math.max(bar.top - r.top, r.height / 2) : r.height };
+}
+
+/** 剛好放下 bounds 要縮放多少（還沒限制範圍） */
+const fitZoom = (bounds: m.Rect, area: { w: number; h: number }, pad = FIT_PAD) =>
+  Math.min((area.w - pad * 2) / Math.max(bounds.w, 1), (area.h - pad * 2) / Math.max(bounds.h, 1));
+
+/** 把 bounds 放在 area 中間的畫面；塞不下時不縮到看不清楚，寧可只看到中間的一部分 */
+function viewOver(bounds: m.Rect, area: { w: number; h: number }, maxZoom: number, pad = FIT_PAD): View {
+  const zoom = clampZoom(Math.max(READABLE_ZOOM, Math.min(fitZoom(bounds, area, pad), maxZoom)));
+  return { zoom, x: area.w / 2 - (bounds.x + bounds.w / 2) * zoom, y: area.h / 2 - (bounds.y + bounds.h / 2) * zoom };
+}
+
 /** 節點散開、中間大多是空白的元件：沒選取時只有點到節點、邊、名稱才算點到 */
 const SPARSE: ReadonlySet<string> = new Set(['tree', 'graph', 'recursion', 'trie', 'unionFind']);
 
@@ -412,20 +445,13 @@ function Editor<R>({
   const fitTo = useCallback((target: m.BoardDoc, measured: m.Sizes) => {
     const node = viewportRef.current;
     if (!node) return;
-    const r = node.getBoundingClientRect();
     const bounds = m.contentBounds(target, measured);
     if (!bounds) {
+      const r = node.getBoundingClientRect();
       setView({ x: r.width / 2, y: r.height / 2, zoom: 1 });
       return;
     }
-    const pad = 60;
-    // 播放中：播放列蓋在畫面下面，內容排在它上面的空間，不然高的白板最下面會被蓋住（至少留一半的高度）
-    const bar = node.querySelector<HTMLElement>('.board-playback')?.getBoundingClientRect();
-    const height = bar ? Math.max(bar.top - r.top, r.height / 2) : r.height;
-    // 塞不下時不縮到看不清楚：寧可只看到中間的一部分
-    const fit = Math.min((r.width - pad * 2) / Math.max(bounds.w, 1), (height - pad * 2) / Math.max(bounds.h, 1), 1.25);
-    const zoom = clampZoom(Math.max(READABLE_ZOOM, fit));
-    setView({ zoom, x: r.width / 2 - (bounds.x + bounds.w / 2) * zoom, y: height / 2 - (bounds.y + bounds.h / 2) * zoom });
+    setView(viewOver(bounds, fitArea(node), FIT_MAX_ZOOM));
   }, []);
 
   // 打開時把內容放在畫面中間，只做這一次。
@@ -738,6 +764,42 @@ function Editor<R>({
   const playIndex = playing !== null && playing < steps.length ? playing : null;
   /** 畫面上顯示的內容：播放時是那一步的快照，平常是目前的白板 */
   const shownDoc = playIndex === null ? doc : m.stepDoc(doc, playIndex);
+
+  /** 畫面正在滑到下一步（.board-world 加上 transform 的轉場） */
+  const [gliding, setGliding] = useState(false);
+  /** 上一次跟著走的是第幾步；剛開始播放時直接跳過去，之後每一步才用滑的 */
+  const followedStep = useRef<number | null>(null);
+  /**
+   * 放不下整張白板的畫面（手機）：每一步把那一步改的地方放在播放列上面、字看得清楚的大小。
+   * 放得下時不動，跟以前一樣停在「全部顯示」的畫面。讀最新的 doc、sizes，但只在換步驟時才動
+   */
+  const followStep = useEffectEvent((index: number) => {
+    const node = viewportRef.current;
+    const whole = m.contentBounds(doc, sizes);
+    const step = m.contentBounds(m.stepDoc(doc, index), sizes);
+    if (!node || !whole || !step) return;
+    const area = fitArea(node);
+    if (fitZoom(whole, area) >= FOLLOW_BELOW) return;
+    // 這一步整個放得下就看整步（指標移動時串列的另一頭不會被切掉）；放不下才只看這一步改的地方
+    const focus = fitZoom(step, area, FOLLOW_PAD) >= FOLLOW_BELOW ? step : (m.stepFocus(doc, index, sizes) ?? step);
+    if (followedStep.current !== null && followedStep.current !== index) setGliding(true);
+    followedStep.current = index;
+    setView(viewOver(focus, area, FOLLOW_MAX_ZOOM, FOLLOW_PAD));
+  });
+  useEffect(() => {
+    if (playIndex === null) {
+      followedStep.current = null;
+      return;
+    }
+    // 等播放列畫出來、量得到它的高度
+    const frame = requestAnimationFrame(() => followStep(playIndex));
+    return () => cancelAnimationFrame(frame);
+  }, [playIndex]);
+  useEffect(() => {
+    if (!gliding) return;
+    const timer = setTimeout(() => setGliding(false), GLIDE_MS);
+    return () => clearTimeout(timer);
+  }, [gliding]);
 
   /** 選了一條箭頭（選取工具、不在播放）：線中間畫拉彎的把手 */
   const bendable =
@@ -1698,7 +1760,7 @@ function Editor<R>({
           onPointerUp={(e) => finishGesture(e, false)}
           onPointerCancel={(e) => finishGesture(e, true)}
         >
-          <div className="board-world" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}>
+          <div className="board-world" data-gliding={gliding || undefined} style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}>
             {placed.map((el) => (
               <ElementView
                 key={el.id}

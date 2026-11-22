@@ -148,5 +148,7 @@ export function isPaletteClickDuringPlayback(event: { target: EventTarget | null
   const palette = event.target.closest('.board[data-playing]')?.querySelector('.board-palette');
   if (!palette) return false;
   const box = palette.getBoundingClientRect();
+  // 手機上播放時元件庫整條收起來（display: none），量出來是 (0, 0) 的空框：不算點到
+  if (box.width === 0 || box.height === 0) return false;
   return event.clientX >= box.left && event.clientX <= box.right && event.clientY >= box.top && event.clientY <= box.bottom;
 }

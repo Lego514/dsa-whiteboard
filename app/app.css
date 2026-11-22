@@ -27,17 +27,9 @@
 }
 
 .app-examples-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
   color: var(--ink);
   font-size: 14px;
   font-weight: 600;
-}
-
-.app-examples-label svg {
-  width: 14px;
-  height: 14px;
 }
 
 .app-example {
@@ -89,7 +81,7 @@
   z-index: 1;
 }
 
-/* 中等寬度：標題列擠，拿掉「範例」兩個字和「不會存」（標題上面已經寫是範例），題名才放得下。
+/* 中等寬度：標題列擠，拿掉「範例」兩個字和「範例，不會存」（範例按鈕已經看得出是範例），題名才放得下。
    手機上（560 以下）存檔狀態換到標題上面那行，照樣顯示 */
 @media (min-width: 561px) and (max-width: 1040px) {
   .app-examples-label,
@@ -99,24 +91,13 @@
 }
 
 /* 中等寬度的下拉選單：每一項左邊是題名、右邊是題型，現在看的那一項亮起來 */
-.app-example-pick {
-  background: var(--marker);
-  color: var(--marker-ink);
-}
-
-.app-example-pick:hover {
-  background: var(--marker);
-  color: var(--marker-ink);
-  border-color: var(--ink-3);
-}
-
 .app-example-pick svg {
   width: 14px;
   height: 14px;
 }
 
 .app-example-menu {
-  min-width: 340px;
+  min-width: 380px;
   max-width: calc(100vw - 24px);
 }
 
@@ -137,6 +118,59 @@
 }
 
 .app-example-topic {
+  flex: none;
   color: var(--ink-3);
   font-size: 13px;
+  white-space: nowrap;
+}
+
+/* 範例外面包一層攔點擊，不影響白板的版面 */
+.app-example-frame {
+  display: contents;
+}
+
+/* 自己的白板上「範例 ▾」是一般的按鈕；看範例時寫現在的題型、黃色 */
+.app-example-pick-current,
+.app-example-pick-current:hover {
+  background: var(--marker);
+  color: var(--marker-ink);
+}
+
+/* 範例播放時按了左邊的元件：標題列下面置中的一張小卡，說為什麼不能畫、給兩個按鈕 */
+.app-draw-prompt {
+  position: fixed;
+  z-index: 40;
+  top: calc(64px + env(safe-area-inset-top));
+  left: 50%;
+  translate: -50% 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  width: max-content;
+  max-width: min(560px, calc(100vw - 24px));
+  padding: 10px 10px 10px 16px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--sheet);
+  color: var(--ink);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+}
+
+.app-draw-prompt p {
+  flex: 1 1 240px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.app-draw-prompt-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.app-draw-prompt-close svg {
+  width: 16px;
+  height: 16px;
 }

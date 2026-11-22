@@ -12,9 +12,12 @@ test('plays the 206 example once on a first visit, then stops on the last step',
   await page.goto('./');
   await expect(heading(page)).toHaveText('206. Reverse Linked List');
   // 手機上標題下面那行換成存檔狀態，只在寬的畫面看得到
-  if ((page.viewportSize()?.width ?? 1280) > 560) await expect(page.getByText('Example, played step by step')).toBeVisible();
-  // 範例不會存：存檔狀態那裡說清楚（寬的畫面標題上面已經寫是範例，只寫不會存）
-  await expect(page.locator('.board-save')).toHaveText((page.viewportSize()?.width ?? 1280) > 560 ? 'Not saved' : 'Example, not saved');
+  // 第一次來的人先看到一句話說這是什麼
+  if ((page.viewportSize()?.width ?? 1280) > 560) {
+    await expect(page.getByText('DSA Whiteboard: sketch a solution, then replay it step by step')).toBeVisible();
+  }
+  // 範例不會存：存檔狀態那裡說清楚
+  await expect(page.locator('.board-save')).toHaveText('Example, not saved');
   // 一打開就在播放：第一步，說明是講法的第一句
   await expect(position(page)).toHaveText('Step 1 of 7');
   await expect(page.getByText(/^The key insight is that reversing a list/)).toBeVisible();
@@ -119,6 +122,48 @@ test('switches examples from a menu when the header is too narrow for the topic 
   await expect(heading(page)).toHaveText('1143. Longest Common Subsequence');
   await expect(page).toHaveURL(/#example=1143$/);
   await expect(page.getByRole('button', { name: 'Examples: 1143. Longest Common Subsequence' })).toHaveText('DP');
+});
+
+test('opens an example from my own board, and comes back to the board', async ({ page }) => {
+  await asReturningVisitor(page);
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Array', exact: true }).click();
+  await expect(page.getByRole('group', { name: /^Array nums/ })).toBeVisible();
+
+  // 畫到一半也能回去看範例：寬的畫面在標題列的「Examples」，手機上在「⋯」選單
+  if ((page.viewportSize()?.width ?? 1280) <= 560) {
+    await page.getByRole('button', { name: 'More' }).click();
+    await page.getByRole('button', { name: 'Example: 1143. Longest Common Subsequence' }).click();
+  } else {
+    await page.getByRole('button', { name: 'Examples', exact: true }).click();
+    await page.getByRole('button', { name: /^1143\. Longest Common Subsequence/ }).click();
+  }
+  await expect(heading(page)).toHaveText('1143. Longest Common Subsequence');
+
+  // 自己的白板還在
+  await page.getByRole('button', { name: 'My board' }).click();
+  await expect(heading(page)).toHaveText('DSA Whiteboard');
+  await expect(page.getByRole('group', { name: /^Array nums/ })).toBeVisible();
+});
+
+test('explains why the elements do nothing while an example plays, and offers a way to draw', async ({ page }) => {
+  await page.goto('./');
+  await expect(position(page)).toHaveText('Step 1 of 7');
+  // 播放時元件區不能用（點擊穿過去，所以用 force）：按了要說為什麼，不是沒反應
+  const array = page.getByRole('button', { name: 'Array', exact: true });
+  await array.click({ force: true });
+  const prompt = page.getByRole('status').filter({ hasText: 'The example is playing' });
+  await expect(prompt).toBeVisible();
+  await prompt.getByRole('button', { name: 'Close' }).click();
+  await expect(prompt).toHaveCount(0);
+
+  await array.click({ force: true });
+  await prompt.getByRole('button', { name: 'Blank board' }).click();
+  await expect(heading(page)).toHaveText('DSA Whiteboard');
+  await expect(prompt).toHaveCount(0);
+  // 現在可以畫了
+  await array.click();
+  await expect(page.getByRole('group', { name: /^Array nums/ })).toBeVisible();
 });
 
 test('asks before an example replaces a board I already drew on', async ({ page }) => {

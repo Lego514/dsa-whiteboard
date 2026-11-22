@@ -82,6 +82,7 @@ type Gesture =
   | { kind: 'shape'; pointerId: number; variant: m.ShapeVariant; from: m.Point; to: m.Point }
   | { kind: 'marquee'; pointerId: number; start: m.Point; base: ReadonlySet<string> }
   | { kind: 'resize'; pointerId: number; id: string; start: m.Point; to: m.Point; base: m.BoardDoc; w: number; h: number; moved: boolean }
+  | { kind: 'bend'; pointerId: number; id: string; start: m.Point; startBend: number; base: m.BoardDoc; moved: boolean }
   | { kind: 'pinch'; startDistance: number; startMid: m.Point; view: View };
 
 type Draft =
@@ -89,6 +90,10 @@ type Draft =
   | { kind: 'arrow'; from: m.Point; to: m.Point; head: 'end' | 'none' }
   | { kind: 'shape'; shape: m.ElementOf<'shape'> }
   | { kind: 'marquee'; rect: m.Rect };
+
+/** 拉彎把手畫多大、點多近算點到（螢幕像素） */
+const BEND_HANDLE_R = 6;
+const BEND_HANDLE_HIT = 12;
 
 const clampZoom = (zoom: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
 
@@ -281,7 +286,7 @@ function Editor<R>({
       synced.current = applyOps(synced.current, ops);
       // 拖曳中是從開始時的內容算位置，別人的修改也要套上去，才不會被拖曳蓋掉
       const g = gesture.current;
-      if (g && (g.kind === 'move' || g.kind === 'resize')) g.base = applyOps(g.base, ops);
+      if (g && (g.kind === 'move' || g.kind === 'resize' || g.kind === 'bend')) g.base = applyOps(g.base, ops);
       // 復原紀錄的每個版本也套上，復原只會退回自己的動作
       setHistory((h) => rebaseHistory(h, ops));
     },
@@ -509,6 +514,19 @@ function Editor<R>({
     cellSel && single?.type === 'trie' && single.id === cellSel.id && cellSel.index < trieNodes(single.words).nodes.length ? single : undefined;
   const trieNode = pickedTrie ? cellSel!.index : undefined;
 
+  /**
+   * 指著的地方是哪個元件的哪一格：箭頭接在那一格（陣列的格子、樹或圖的節點），
+   * 不是格子就接整個元件，不在元件上是 null
+   */
+  const arrowEndUnder = (node: Element | null): m.ArrowEnd | null => {
+    const host = node?.closest<HTMLElement>('[data-el]');
+    const id = host?.dataset.el;
+    if (!id) return null;
+    const cell = node!.closest<HTMLElement>('[data-cell]');
+    const index = cell && host.contains(cell) ? Number(cell.dataset.cell) : NaN;
+    return m.arrowEndAt(doc, id, Number.isInteger(index) ? index : undefined);
+  };
+
   const startEditing = (id: string, focus?: number) => {
     setHistory((h) => m.checkpoint(h));
     setEditingId(id);
@@ -720,6 +738,15 @@ function Editor<R>({
   const playIndex = playing !== null && playing < steps.length ? playing : null;
   /** 畫面上顯示的內容：播放時是那一步的快照，平常是目前的白板 */
   const shownDoc = playIndex === null ? doc : m.stepDoc(doc, playIndex);
+
+  /** 選了一條箭頭（選取工具、不在播放）：線中間畫拉彎的把手 */
+  const bendable =
+    tool === 'select' && single?.type === 'arrow' && playIndex === null && !viewOnly
+      ? (() => {
+          const shape = m.arrowShape(doc, single, sizes);
+          return shape ? { arrow: single, shape } : null;
+        })()
+      : null;
 
   const captureCurrentStep = () => {
     if (steps.length >= m.MAX_STEPS) return;
@@ -1006,6 +1033,13 @@ function Editor<R>({
       return;
     }
 
+    // 選了一條箭頭：拖線中間的把手把它拉彎
+    if (bendable && Math.hypot(world.x - bendable.shape.apex.x, world.y - bendable.shape.apex.y) <= BEND_HANDLE_HIT / view.zoom) {
+      const bend = bendable.arrow.bend ?? 0;
+      gesture.current = { kind: 'bend', pointerId: e.pointerId, id: bendable.arrow.id, start: world, startBend: bend, base: doc, moved: false };
+      return;
+    }
+
     const connector = tool === 'select' && !elId && !spaceDown.current ? m.hitConnector(doc, world, 8 / view.zoom, sizes) : undefined;
     if (connector) {
       setCellSel(null);
@@ -1093,7 +1127,7 @@ function Editor<R>({
       }
       case 'arrow':
       case 'line': {
-        const from: m.ArrowEnd = elId ? { id: elId } : { x: Math.round(world.x), y: Math.round(world.y) };
+        const from: m.ArrowEnd = elId ? (arrowEndUnder(target) ?? { id: elId }) : { x: Math.round(world.x), y: Math.round(world.y) };
         const head = tool === 'line' ? 'none' : 'end';
         gesture.current = { kind: 'arrow', pointerId: e.pointerId, from, fromPoint: world, head };
         setDraft({ kind: 'arrow', from: world, to: world, head });
@@ -1177,9 +1211,13 @@ function Editor<R>({
       case 'erase':
         eraseAt(world, g);
         return;
-      case 'arrow':
+      case 'arrow': {
         setDraft({ kind: 'arrow', from: g.fromPoint, to: world, head: g.head });
+        // 標出放開後會接在哪一格
+        const over = arrowEndUnder(document.elementFromPoint(e.clientX, e.clientY));
+        setSnap(over && 'cell' in over && over.cell !== undefined ? { id: over.id, index: over.cell } : null);
         return;
+      }
       case 'shape':
         g.to = world;
         drawShape(g, keepShape(e));
@@ -1197,6 +1235,14 @@ function Editor<R>({
         }
         g.to = world;
         resizeTo(g, keepShape(e));
+        return;
+      }
+      case 'bend': {
+        if (!g.moved) {
+          g.moved = true;
+          setHistory((h) => m.checkpoint(h));
+        }
+        setHistory((h) => m.replace(h, m.bendArrow(g.base, g.id, g.startBend, g.start, world, sizes)));
         return;
       }
     }
@@ -1256,12 +1302,23 @@ function Editor<R>({
       }
       case 'arrow': {
         const world = toWorld(e.clientX, e.clientY);
-        const hit = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>('[data-el]')?.dataset.el;
-        const to: m.ArrowEnd = hit ? { id: hit } : { x: Math.round(world.x), y: Math.round(world.y) };
-        const same = 'id' in g.from && 'id' in to && g.from.id === to.id;
+        const to: m.ArrowEnd = arrowEndUnder(document.elementFromPoint(e.clientX, e.clientY)) ?? { x: Math.round(world.x), y: Math.round(world.y) };
+        // 同一個元件的兩格可以連（例如陣列的這格指向那格），同一格或整個元件連自己不行
+        const same = 'id' in g.from && 'id' in to && g.from.id === to.id && g.from.cell === to.cell;
         const tiny = !('id' in g.from) && !('id' in to) && Math.hypot(world.x - g.fromPoint.x, world.y - g.fromPoint.y) < 8;
         if (!same && !tiny) {
-          apply(m.addElement(doc, { type: 'arrow', id: m.newId(doc), from: g.from, to, color, ...(g.head === 'none' ? { head: 'none' as const } : {}) }));
+          const bend = m.autoBend(doc, g.from, to, sizes);
+          apply(
+            m.addElement(doc, {
+              type: 'arrow',
+              id: m.newId(doc),
+              from: g.from,
+              to,
+              color,
+              ...(g.head === 'none' ? { head: 'none' as const } : {}),
+              ...(bend ? { bend } : {}),
+            }),
+          );
         }
         return;
       }
@@ -1728,25 +1785,32 @@ function Editor<R>({
                     </g>
                   );
                 }
-                const ends = m.arrowPoints(shownDoc, el, sizes);
-                if (!ends) return null;
+                const shape = m.arrowShape(shownDoc, el, sizes);
+                if (!shape) return null;
+                const d = m.arrowPath(shape);
                 return (
                   <g key={el.id}>
-                    {selected.has(el.id) && (
-                      <line x1={ends[0].x} y1={ends[0].y} x2={ends[1].x} y2={ends[1].y} className="board-arrow-selected" />
-                    )}
-                    <line
-                      x1={ends[0].x}
-                      y1={ends[0].y}
-                      x2={ends[1].x}
-                      y2={ends[1].y}
+                    {selected.has(el.id) && <path d={d} fill="none" className="board-arrow-selected" />}
+                    <path
+                      d={d}
+                      fill="none"
                       stroke={m.colorVar(el.color)}
-                      className="board-arrow"
+                      className={el.dash ? 'board-arrow board-dashed' : 'board-arrow'}
                       markerEnd={el.head === 'none' ? undefined : `url(#board-head-${el.color})`}
                     />
                   </g>
                 );
               })}
+              {/* 選了一條箭頭：中間的圓點拖了會拉彎 */}
+              {bendable && (
+                <circle
+                  className="board-bend-handle"
+                  data-bend-handle
+                  cx={bendable.shape.apex.x}
+                  cy={bendable.shape.apex.y}
+                  r={BEND_HANDLE_R / view.zoom}
+                />
+              )}
               {draft?.kind === 'pen' && <path d={strokePath(draft.points)} stroke={m.colorVar(color)} className="board-stroke" />}
               {draft?.kind === 'marquee' && (
                 <rect className="board-marquee" x={draft.rect.x} y={draft.rect.y} width={draft.rect.w} height={draft.rect.h} />
@@ -2578,6 +2642,11 @@ function SelectionActions({ el, doc, sizes, apply, onEdit }: SelectionActionsPro
   if (el.type === 'arrow') {
     const plain = el.head === 'none';
     buttons.push([plain ? a.makeArrow : a.makeLine, () => apply(m.setArrowHead(doc, el.id, plain ? 'end' : 'none'))]);
+    // 拉彎用線中間的把手；拉直一鍵回來
+    if (el.bend) buttons.push([a.straighten, () => apply(m.updateElement<m.ElementOf<'arrow'>>(doc, el.id, { bend: undefined }))]);
+  }
+  if (el.type === 'arrow' || el.type === 'shape') {
+    buttons.push([el.dash ? a.makeSolid : a.makeDashed, () => apply(m.setDashed(doc, new Set([el.id]), !el.dash))]);
   }
   const attachedTo = el.type === 'pointer' && el.attach ? m.findElement(doc, el.attach.id)?.type : undefined;
   if (el.type === 'pointer' && attachedTo === 'tree') {

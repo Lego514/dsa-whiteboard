@@ -486,6 +486,80 @@ test('frames part of an array with a rectangle without blocking it', async ({ pa
   await expect(array).toBeVisible();
 });
 
+test('connects two cells with an arrow that arcs over the array, then curves, dashes, and straightens it', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Array', exact: true }).click();
+  const array = page.getByRole('group', { name: /^Array nums/ });
+  const center = async (n: number) => {
+    const box = (await array.locator(`[data-cell="${n}"]`).boundingBox())!;
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  };
+  const saved = async () => {
+    const doc = JSON.parse((await page.evaluate(() => localStorage.getItem('dsa-whiteboard:doc'))) ?? '{"elements":[]}');
+    return doc.elements.find((el: { type: string }) => el.type === 'arrow');
+  };
+
+  // A 畫箭頭：從第 0 格拉到第 3 格，兩端接在那兩格，而且拱在陣列上面（不會蓋住中間的格子）
+  const from = await center(0);
+  const to = await center(3);
+  await page.keyboard.press('a');
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  // 拉到格子上時標出會接在哪一格
+  await page.mouse.move(to.x, to.y, { steps: 5 });
+  await expect(array.locator('[data-cell="3"]')).toHaveAttribute('data-snap', 'true');
+  await page.mouse.up();
+  await expect.poll(saved).toMatchObject({ from: { cell: 0 }, to: { cell: 3 } });
+  const arrow = page.locator('path.board-arrow');
+  const arcTop = (await arrow.boundingBox())!.y;
+  expect(arcTop).toBeLessThan((await array.boundingBox())!.y);
+
+  // 陣列移動，箭頭跟著它的兩格走
+  await page.keyboard.press('v');
+  await array.locator('.board-label').click();
+  const before = (await arrow.boundingBox())!;
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => Math.round((await arrow.boundingBox())!.x - before.x)).toBe(10);
+
+  // 點拱起來的地方選它，改成虛線
+  const box = (await arrow.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + 1);
+  const selbar = page.getByRole('toolbar', { name: 'Selected element' });
+  await selbar.getByRole('button', { name: 'Make it dashed' }).click();
+  await expect(arrow).toHaveClass(/board-dashed/);
+  await expect.poll(saved).toMatchObject({ dash: true });
+
+  // 拖中間的圓點拉得更彎，再一鍵拉直
+  const bend = (await saved()).bend as number;
+  const handle = (await page.locator('[data-bend-handle]').boundingBox())!;
+  await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handle.x + handle.width / 2, handle.y - 40, { steps: 4 });
+  await page.mouse.up();
+  await expect.poll(async () => (await saved()).bend).toBeGreaterThan(bend + 30);
+  await selbar.getByRole('button', { name: 'Straighten' }).click();
+  await expect.poll(async () => (await saved()).bend).toBeUndefined();
+  await page.getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
+  await expect.poll(async () => (await saved()).bend).toBeGreaterThan(bend + 30);
+});
+
+test('dashes a rectangle frame', async ({ page }) => {
+  await page.goto('./');
+  const canvas = (await page.getByRole('dialog', { name: 'DSA Whiteboard' }).boundingBox())!;
+  const x = canvas.x + canvas.width / 2 - 100;
+  const y = canvas.y + canvas.height / 2 - 60;
+  await page.keyboard.press('r');
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 160, y + 90, { steps: 4 });
+  await page.mouse.up();
+  const selbar = page.getByRole('toolbar', { name: 'Selected element' });
+  await selbar.getByRole('button', { name: 'Make it dashed' }).click();
+  await expect(page.locator('.board-shape-line')).toHaveClass(/board-dashed/);
+  await selbar.getByRole('button', { name: 'Make it solid' }).click();
+  await expect(page.locator('.board-shape-line')).not.toHaveClass(/board-dashed/);
+});
+
 test('draws a circle with Ctrl and keeps it round while resizing', async ({ page }) => {
   await page.goto('./');
   const canvas = (await page.getByRole('dialog', { name: 'DSA Whiteboard' }).boundingBox())!;

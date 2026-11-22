@@ -1,7 +1,8 @@
 import { highlightPython, type TokenKind } from './code';
 import {
   activeAt,
-  arrowPoints,
+  arrowPath,
+  arrowShape,
   rangeRect,
   CELL,
   COMPLEXITY_H,
@@ -776,10 +777,14 @@ function drawText(el: ElementOf<'text'>, sizes: Sizes | undefined, options: Expo
   return parts.join('');
 }
 
+/** 虛線的間隔，跟畫面上的 .board-dashed 一樣 */
+const DASH = ' stroke-dasharray="9 7"';
+
 function drawShape(el: ElementOf<'shape'>): string {
   const stroke = STROKE_COLORS[el.color];
-  if (el.variant === 'rect') return rect(el.x + 1, el.y + 1, el.w - 2, el.h - 2, 'none', stroke, ' stroke-width="2.5" rx="8"');
-  return `<ellipse cx="${el.x + el.w / 2}" cy="${el.y + el.h / 2}" rx="${el.w / 2 - 1}" ry="${el.h / 2 - 1}" fill="none" stroke="${stroke}" stroke-width="2.5"/>`;
+  const dash = el.dash ? DASH : '';
+  if (el.variant === 'rect') return rect(el.x + 1, el.y + 1, el.w - 2, el.h - 2, 'none', stroke, ` stroke-width="2.5" rx="8"${dash}`);
+  return `<ellipse cx="${el.x + el.w / 2}" cy="${el.y + el.h / 2}" rx="${el.w / 2 - 1}" ry="${el.h / 2 - 1}" fill="none" stroke="${stroke}" stroke-width="2.5"${dash}/>`;
 }
 
 function drawPlaced(doc: BoardDoc, el: Placed, sizes: Sizes | undefined, options: ExportOptions): string {
@@ -853,10 +858,10 @@ export function boardToSvg(doc: BoardDoc, sizes: Sizes | undefined, options: Exp
       const r = rangeRect(doc, el);
       if (r) body.push(rect(r.x, r.y, r.w, r.h, 'none', STROKE_COLORS[el.color], ' stroke-width="2.5" rx="8"'));
     } else if (el.type === 'arrow') {
-      const ends = arrowPoints(doc, el, sizes);
-      if (!ends) continue;
+      const shape = arrowShape(doc, el, sizes);
+      if (!shape) continue;
       const head = el.head === 'none' ? '' : ` marker-end="url(#head-${el.color})"`;
-      body.push(`<line x1="${ends[0].x}" y1="${ends[0].y}" x2="${ends[1].x}" y2="${ends[1].y}" stroke="${STROKE_COLORS[el.color]}" stroke-width="2"${head}/>`);
+      body.push(`<path d="${arrowPath(shape)}" fill="none" stroke="${STROKE_COLORS[el.color]}" stroke-width="2"${el.dash ? DASH : ''}${head}/>`);
     }
   }
 

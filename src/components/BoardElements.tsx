@@ -154,7 +154,7 @@ function ShapeBody({ el, selected }: { el: ElementOf<'shape'>; selected: boolean
     <>
       <svg className="board-shape" width={el.w} height={el.h} style={{ stroke }} aria-hidden>
         {outline('board-shape-hit')}
-        {outline('board-shape-line')}
+        {outline(el.dash ? 'board-shape-line board-dashed' : 'board-shape-line')}
       </svg>
       {selected && <span className="board-resize" data-handle="resize" title={t.board.resize} />}
     </>

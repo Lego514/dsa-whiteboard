@@ -715,7 +715,7 @@ export function duplicateElements(doc: BoardDoc, ids: ReadonlySet<string>): { do
   const copyEnd = (end: ArrowEnd): ArrowEnd | null => {
     if (!('id' in end)) return { x: end.x + COPY_OFFSET, y: end.y + COPY_OFFSET };
     const id = copies.get(end.id);
-    return id ? { id } : null;
+    return id ? { ...end, id } : null;
   };
   for (const el of doc.elements) {
     if (!ids.has(el.id)) continue;
@@ -784,12 +784,20 @@ function distanceToRectEdge(rect: Rect, p: Point): number {
 export const MAX_CELLS = 64;
 
 /** 吸附在這個陣列上的指標，依新的位置移動 */
+/** 插入、刪除格子後，吸附的指標和接在格子上的箭頭跟著它們的格子走 */
 function mapPointers(doc: BoardDoc, listId: string, fn: (index: number) => number): BoardDoc {
+  const mapEnd = (end: ArrowEnd): ArrowEnd => ('id' in end && end.id === listId && end.cell !== undefined ? { ...end, cell: fn(end.cell) } : end);
   return {
     ...doc,
-    elements: doc.elements.map((p) =>
-      p.type === 'pointer' && p.attach?.id === listId ? { ...p, attach: { ...p.attach, index: fn(p.attach.index) } } : p,
-    ),
+    elements: doc.elements.map((p) => {
+      if (p.type === 'pointer' && p.attach?.id === listId) return { ...p, attach: { ...p.attach, index: fn(p.attach.index) } };
+      if (p.type === 'arrow') {
+        const from = mapEnd(p.from);
+        const to = mapEnd(p.to);
+        return from === p.from && to === p.to ? p : { ...p, from, to };
+      }
+      return p;
+    }),
   };
 }
 
@@ -2101,22 +2109,154 @@ function edgePoint(rect: Rect, round: boolean, toward: Point): Point {
   return { x: cx + dx * scale, y: cy + dy * scale };
 }
 
-/** 箭頭兩端的座標；連在元件上的那一端停在元件邊緣。元件不見了就回傳 null */
-export function arrowPoints(doc: BoardDoc, arrow: ElementOf<'arrow'>, sizes?: Sizes): [Point, Point] | null {
-  const resolve = (end: ArrowEnd) => {
-    if (!('id' in end)) return { point: end, rect: null as Rect | null, round: false };
-    const el = findElement(doc, end.id);
-    if (!el || !isPlaced(el)) return null;
-    const rect = rectOf(doc, el, sizes);
-    const round = (el.type === 'node' && el.variant !== 'list') || (el.type === 'shape' && el.variant === 'ellipse');
-    return { point: { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 }, rect, round };
-  };
-  const from = resolve(arrow.from);
-  const to = resolve(arrow.to);
+/** 箭頭可以接的格子：跟指標一樣，陣列類和鏈結串列的格子、二元樹、圖、遞迴樹的節點（堆積只畫樹時是樹的節點） */
+export function cellBox(el: BoardElement, index: number): { rect: Rect; round: boolean } | null {
+  if (!holdsPointers(el)) return null;
+  if (el.type === 'list' && !heapTreeOnly(el)) {
+    return index < el.items.length ? { rect: cellRect(el, index), round: false } : null;
+  }
+  const center = nodeCenters(el).get(index);
+  if (!center) return null;
+  if (el.type === 'recursion') {
+    const w = recursionLayout(el).widths[index] ?? REC_H;
+    return { rect: { x: el.x + center.x - w / 2, y: el.y + center.y - REC_H / 2, w, h: REC_H }, round: false };
+  }
+  return { rect: { x: el.x + center.x - TREE_D / 2, y: el.y + center.y - TREE_D / 2, w: TREE_D, h: TREE_D }, round: true };
+}
+
+/** 箭頭一端對著的東西：一個點，或元件（某一格）的方框 */
+function arrowTarget(doc: BoardDoc, end: ArrowEnd, sizes?: Sizes): { point: Point; rect: Rect | null; round: boolean } | null {
+  if (!('id' in end)) return { point: end, rect: null, round: false };
+  const el = findElement(doc, end.id);
+  if (!el || !isPlaced(el)) return null;
+  // 接的那一格被刪掉了：改接整個元件
+  const cell = end.cell === undefined ? null : cellBox(el, end.cell);
+  const rect = cell?.rect ?? rectOf(doc, el, sizes);
+  const round = cell ? cell.round : (el.type === 'node' && el.variant !== 'list') || (el.type === 'shape' && el.variant === 'ellipse');
+  return { point: { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 }, rect, round };
+}
+
+/** 兩端連線的中點，和往左邊的單位法向量（拉彎的方向）；兩端重疊時法向量是 0 */
+function arrowChord(from: Point, to: Point): { mid: Point; normal: Point } {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const length = Math.hypot(dx, dy);
+  return { mid: { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 }, normal: length === 0 ? { x: 0, y: 0 } : { x: dy / length, y: -dx / length } };
+}
+
+export interface ArrowShape {
+  start: Point;
+  end: Point;
+  /** 彎的時候是二次曲線的控制點；直的是 null */
+  control: Point | null;
+  /** 曲線正中間：拉彎的把手放這裡 */
+  apex: Point;
+}
+
+/**
+ * 箭頭的形狀：連在元件上的那一端停在元件（那一格）的邊緣。彎的箭頭是二次曲線，
+ * 控制點在連線中點往法向量 2 × bend 的地方，曲線正中間就離中點 bend。元件不見了就回傳 null
+ */
+export function arrowShape(doc: BoardDoc, arrow: ElementOf<'arrow'>, sizes?: Sizes): ArrowShape | null {
+  const from = arrowTarget(doc, arrow.from, sizes);
+  const to = arrowTarget(doc, arrow.to, sizes);
   if (!from || !to) return null;
-  const start = from.rect ? edgePoint(from.rect, from.round, to.point) : from.point;
-  const end = to.rect ? edgePoint(to.rect, to.round, from.point) : to.point;
-  return [start, end];
+  const { mid, normal } = arrowChord(from.point, to.point);
+  const bend = arrow.bend ?? 0;
+  const control = bend === 0 ? null : { x: mid.x + normal.x * 2 * bend, y: mid.y + normal.y * 2 * bend };
+  // 彎的箭頭從元件邊緣朝控制點出去，才不會先穿過元件
+  const start = from.rect ? edgePoint(from.rect, from.round, control ?? to.point) : from.point;
+  const end = to.rect ? edgePoint(to.rect, to.round, control ?? from.point) : to.point;
+  const apex = control
+    ? { x: (start.x + 2 * control.x + end.x) / 4, y: (start.y + 2 * control.y + end.y) / 4 }
+    : { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
+  return { start, end, control, apex };
+}
+
+/** 畫箭頭的 SVG path：直的是一條線，彎的是二次曲線 */
+export function arrowPath(shape: ArrowShape): string {
+  const { start, end, control } = shape;
+  return control ? `M${start.x} ${start.y}Q${control.x} ${control.y} ${end.x} ${end.y}` : `M${start.x} ${start.y}L${end.x} ${end.y}`;
+}
+
+/** 彎的箭頭拆成幾段直線來算點到了沒有、佔多大 */
+const CURVE_SEGMENTS = 16;
+
+/** 箭頭沿線的點（直的是兩端，彎的是曲線上的一串點）；元件不見了就回傳 null */
+export function arrowPoints(doc: BoardDoc, arrow: ElementOf<'arrow'>, sizes?: Sizes): Point[] | null {
+  const shape = arrowShape(doc, arrow, sizes);
+  if (!shape) return null;
+  const { start, end, control } = shape;
+  if (!control) return [start, end];
+  return Array.from({ length: CURVE_SEGMENTS + 1 }, (_, i) => {
+    const t = i / CURVE_SEGMENTS;
+    const u = 1 - t;
+    return { x: u * u * start.x + 2 * u * t * control.x + t * t * end.x, y: u * u * start.y + 2 * u * t * control.y + t * t * end.y };
+  });
+}
+
+/** 小於這麼多就拉回直線，拉直不用對得很準 */
+const STRAIGHT_SNAP = 8;
+
+/**
+ * 拖曲線中間的把手：從開始拖時的 bend 加上沿法向量拖了多遠。拖回接近直線時變回直的
+ */
+export function bendArrow(doc: BoardDoc, id: string, startBend: number, from: Point, to: Point, sizes?: Sizes): BoardDoc {
+  const arrow = findElement(doc, id);
+  if (arrow?.type !== 'arrow') return doc;
+  const a = arrowTarget(doc, arrow.from, sizes);
+  const b = arrowTarget(doc, arrow.to, sizes);
+  if (!a || !b) return doc;
+  const { normal } = arrowChord(a.point, b.point);
+  const raw = Math.round(startBend + (to.x - from.x) * normal.x + (to.y - from.y) * normal.y);
+  const bend = Math.abs(raw) < STRAIGHT_SNAP ? 0 : Math.max(-4000, Math.min(4000, raw));
+  return updateElement<ElementOf<'arrow'>>(doc, id, { bend: bend === 0 ? undefined : bend });
+}
+
+/** 同一排格子之間的箭頭往上拱多高：至少越過名稱那一列（才點得到），太遠的不要拱太高 */
+const ARC_MIN = 56;
+const ARC_MAX = 160;
+const ARC_RATIO = 0.35;
+
+/**
+ * 新畫的箭頭一開始彎不彎：同一個陣列（鏈結串列）的兩格之間拱在格子上面，
+ * 直的會蓋住中間的格子、也點不到。其他的畫成直的
+ */
+export function autoBend(doc: BoardDoc, from: ArrowEnd, to: ArrowEnd, sizes?: Sizes): number | undefined {
+  if (!('id' in from) || !('id' in to) || from.id !== to.id || from.cell === undefined || to.cell === undefined) return undefined;
+  const el = findElement(doc, from.id);
+  if (el?.type !== 'list' || heapTreeOnly(el)) return undefined;
+  const a = arrowTarget(doc, from, sizes);
+  const b = arrowTarget(doc, to, sizes);
+  if (!a || !b) return undefined;
+  const { normal } = arrowChord(a.point, b.point);
+  if (normal.y === 0) return undefined;
+  const height = Math.round(Math.min(ARC_MAX, Math.max(ARC_MIN, Math.hypot(b.point.x - a.point.x, b.point.y - a.point.y) * ARC_RATIO)));
+  // 往上（y 變小）的那一邊
+  return normal.y < 0 ? height : -height;
+}
+
+/** 箭頭、直線和框框換成虛線或實線；其他元件不受影響 */
+export function setDashed(doc: BoardDoc, ids: ReadonlySet<string>, dashed: boolean): BoardDoc {
+  return {
+    ...doc,
+    elements: doc.elements.map((el) =>
+      ids.has(el.id) && (el.type === 'arrow' || el.type === 'shape') ? ({ ...el, dash: dashed ? true : undefined } as BoardElement) : el,
+    ),
+  };
+}
+
+/** 點到 at 的時候，箭頭可以接在哪：元件的某一格（陣列的格子、樹或圖的節點），或整個元件 */
+export function arrowEndAt(doc: BoardDoc, id: string, cell: number | undefined): ArrowEnd {
+  const el = findElement(doc, id);
+  return el && cell !== undefined && cellBox(el, cell) ? { id, cell } : { id };
+}
+
+/** 折線上離 p 最近的距離 */
+function distanceToPolyline(p: Point, points: Point[]): number {
+  let best = Infinity;
+  for (let i = 0; i + 1 < points.length; i += 1) best = Math.min(best, distanceToSegment(p, points[i], points[i + 1]));
+  return best;
 }
 
 /** 筆跡加一個點；離上一個點太近就略過，存成整數讓資料小一點 */
@@ -2154,8 +2294,8 @@ export function hitInk(doc: BoardDoc, at: Point, radius: number, sizes?: Sizes):
     if (el.type === 'stroke') {
       if (hitStroke(el, at, radius)) hits.push(el.id);
     } else if (el.type === 'arrow') {
-      const ends = arrowPoints(doc, el, sizes);
-      if (ends && distanceToSegment(at, ends[0], ends[1]) <= radius) hits.push(el.id);
+      const points = arrowPoints(doc, el, sizes);
+      if (points && distanceToPolyline(at, points) <= radius) hits.push(el.id);
     } else if (el.type === 'shape' && distanceToShapeEdge(el, at) <= radius) {
       hits.push(el.id);
     } else if (el.type === 'range') {
@@ -2247,8 +2387,8 @@ export function hitConnector(doc: BoardDoc, at: Point, radius: number, sizes?: S
       continue;
     }
     if (el.type !== 'arrow') continue;
-    const ends = arrowPoints(doc, el, sizes);
-    if (ends && distanceToSegment(at, ends[0], ends[1]) <= radius) return el.id;
+    const points = arrowPoints(doc, el, sizes);
+    if (points && distanceToPolyline(at, points) <= radius) return el.id;
   }
   return undefined;
 }

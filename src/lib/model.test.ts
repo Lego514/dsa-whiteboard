@@ -7,6 +7,12 @@ import {
   addPointerAt,
   appendPoint,
   arrowPoints,
+  arrowEndAt,
+  setDashed,
+  cellRect,
+  bendArrow,
+  arrowShape,
+  autoBend,
   CELL,
   COMPLEXITY_H,
   COMPLEXITY_W,
@@ -359,6 +365,114 @@ describe('arrows and ink', () => {
     const inked = addElement(doc, { type: 'stroke', id: 's', color: 'red', points: [-50, 300, 10, 310] });
     expect(contentBounds(inked)).toEqual({ x: -50, y: 0, w: 326, h: 310 });
     expect(contentBounds(EMPTY_DOC)).toBeNull();
+  });
+});
+
+describe('arrows on cells, curved, and dashed', () => {
+  // 陣列 nums 在 (100, 100)，四格：1 2 3 4
+  const base = boardWithArray();
+  const list = (doc: BoardDoc) => findElement(doc, 'arr') as ElementOf<'list'>;
+  const cellArrow = (from: number, to: number, extra: Partial<ElementOf<'arrow'>> = {}): ElementOf<'arrow'> => ({
+    type: 'arrow',
+    id: 'e',
+    from: { id: 'arr', cell: from },
+    to: { id: 'arr', cell: to },
+    color: 'ink',
+    ...extra,
+  });
+
+  it('starts and ends on the cells it is attached to', () => {
+    const arrow = cellArrow(0, 3);
+    const doc = addElement(base, arrow);
+    const [start, end] = arrowPoints(doc, arrow)!;
+    const first = cellRect(list(doc), 0);
+    const last = cellRect(list(doc), 3);
+    // 從第 0 格的右邊出去，進到第 3 格的左邊
+    expect(start).toEqual({ x: first.x + first.w, y: first.y + first.h / 2 });
+    expect(end).toEqual({ x: last.x, y: last.y + last.h / 2 });
+    expect(boardDocSchema.safeParse(doc).success).toBe(true);
+  });
+
+  it('moves with its cells when cells are inserted or deleted, and falls back to the whole array when its cell is gone', () => {
+    let doc = addElement(base, cellArrow(1, 3));
+    doc = insertCell(doc, 'arr', 0);
+    expect(findElement(doc, 'e')).toMatchObject({ from: { cell: 2 }, to: { cell: 4 } });
+    doc = deleteCell(doc, 'arr', 0);
+    expect(findElement(doc, 'e')).toMatchObject({ from: { cell: 1 }, to: { cell: 3 } });
+    // 舊資料或別人的修改讓那一格不在了：接到整個陣列，不會不見
+    const stale = addElement(base, cellArrow(1, 40));
+    expect(arrowPoints(stale, findElement(stale, 'e') as ElementOf<'arrow'>)).not.toBeNull();
+  });
+
+  it('attaches to a cell only on elements that have cells or nodes', () => {
+    const note = createElement('sticky', { x: 0, y: 400 }, 'n', texts);
+    const doc = addElement(base, note);
+    expect(arrowEndAt(doc, 'arr', 2)).toEqual({ id: 'arr', cell: 2 });
+    expect(arrowEndAt(doc, 'arr', 9)).toEqual({ id: 'arr' });
+    expect(arrowEndAt(doc, 'n', 0)).toEqual({ id: 'n' });
+    const tree = { elements: [createElement('binaryTree', { x: 0, y: 0 }, 't', texts)] } as BoardDoc;
+    expect(arrowEndAt(tree, 't', 1)).toEqual({ id: 't', cell: 1 });
+  });
+
+  it('curves through a point bend away from the middle, and the handle drags it', () => {
+    const straight: ElementOf<'arrow'> = { type: 'arrow', id: 'e', from: { x: 0, y: 0 }, to: { x: 200, y: 0 }, color: 'ink' };
+    let doc: BoardDoc = { elements: [straight] };
+    expect(arrowShape(doc, straight)).toMatchObject({ control: null, apex: { x: 100, y: 0 } });
+    // 往下拖 40：bend 是往左邊（從 from 看 to）為正，所以往下是負的
+    doc = bendArrow(doc, 'e', 0, { x: 100, y: 0 }, { x: 100, y: 40 });
+    const bent = findElement(doc, 'e') as ElementOf<'arrow'>;
+    expect(bent.bend).toBe(-40);
+    const shape = arrowShape(doc, bent)!;
+    expect(shape.apex.x).toBeCloseTo(100);
+    expect(shape.apex.y).toBeCloseTo(40);
+    // 彎的線點得到彎的地方，直線的位置點不到
+    expect(hitConnector(doc, { x: 100, y: 38 }, 6)).toBe('e');
+    expect(hitConnector(doc, { x: 100, y: 0 }, 6)).toBeUndefined();
+    // 拖回接近直線就變回直的
+    doc = bendArrow(doc, 'e', -40, { x: 100, y: 40 }, { x: 100, y: 3 });
+    expect((findElement(doc, 'e') as ElementOf<'arrow'>).bend).toBeUndefined();
+  });
+
+  it('makes arrows and frames dashed or solid, and exports them that way', () => {
+    const frame = createElement('treeNode', { x: 0, y: 0 }, 'a', texts);
+    const box = { type: 'shape' as const, id: 'r', variant: 'rect' as const, x: 0, y: 100, w: 80, h: 40, color: 'red' as const };
+    let doc: BoardDoc = { elements: [frame, box, cellArrow(0, 1, { id: 'e' })] };
+    doc = setDashed(doc, new Set(['r', 'e', 'a']), true);
+    expect(findElement(doc, 'r')).toMatchObject({ dash: true });
+    expect(findElement(doc, 'a')).not.toHaveProperty('dash');
+    expect(boardDocSchema.safeParse(doc).success).toBe(true);
+    doc = setDashed(doc, new Set(['r']), false);
+    expect((findElement(doc, 'r') as ElementOf<'shape'>).dash).toBeUndefined();
+    const bent = { elements: [{ ...cellArrow(0, 1), from: { x: 0, y: 0 }, to: { x: 100, y: 0 }, dash: true as const, bend: 30 }] } as BoardDoc;
+    const svg = boardToSvg(bent, undefined, { measure: estimateWidth, front: 'front', back: 'back' })!.svg;
+    expect(svg).toContain('stroke-dasharray="9 7"');
+    expect(svg).toMatch(/d="M0 0Q50 -?\d+ 100 0"/);
+  });
+
+  it('arcs a new arrow between two cells of one array over the top, either way', () => {
+    for (const [from, to] of [
+      [0, 3],
+      [3, 0],
+      [1, 2],
+    ]) {
+      const bend = autoBend(base, { id: 'arr', cell: from }, { id: 'arr', cell: to });
+      const shape = arrowShape(addElement(base, cellArrow(from, to, { bend })), cellArrow(from, to, { bend }))!;
+      // 拱到名稱那一列上面（陣列的 y 是 100），點得到
+      expect(shape.apex.y).toBeLessThan(100);
+    }
+    // 不同元件、整個元件、樹的節點之間是直的
+    expect(autoBend(base, { id: 'arr', cell: 0 }, { x: 0, y: 0 })).toBeUndefined();
+    expect(autoBend(base, { id: 'arr' }, { id: 'arr', cell: 1 })).toBeUndefined();
+    const tree = { elements: [createElement('binaryTree', { x: 0, y: 0 }, 't', texts)] } as BoardDoc;
+    expect(autoBend(tree, { id: 't', cell: 1 }, { id: 't', cell: 2 })).toBeUndefined();
+  });
+
+  it('keeps the cell when an arrow is copied with its array', () => {
+    const doc = addElement(base, cellArrow(0, 2));
+    const { doc: next, ids } = duplicateElements(doc, new Set(['arr', 'e']));
+    const copy = next.elements.find((el) => el.type === 'arrow' && ids.includes(el.id)) as ElementOf<'arrow'>;
+    expect(copy.from).toMatchObject({ cell: 0 });
+    expect(copy.to).toMatchObject({ cell: 2 });
   });
 });
 

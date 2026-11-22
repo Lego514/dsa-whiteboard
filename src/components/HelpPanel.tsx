@@ -88,7 +88,19 @@ const TOOL_KEYS = [
   ['E', 'eraser'],
 ] as const;
 
-export function HelpPanel() {
+/** 說明最上面的按鈕，由使用白板的一方給（WhiteboardProps.helpActions） */
+export interface HelpAction {
+  label: string;
+  onSelect: () => void;
+}
+
+interface HelpPanelProps {
+  actions?: readonly HelpAction[];
+  /** 按了其中一個按鈕：先收起說明 */
+  onAction?: () => void;
+}
+
+export function HelpPanel({ actions = [], onAction }: HelpPanelProps = {}) {
   const { t } = useI18n();
   const g = t.board.helpGroups;
   const k = t.board.keys;
@@ -220,6 +232,23 @@ export function HelpPanel() {
   return (
     <div className="board-help" data-ui>
       <h2>{t.board.help}</h2>
+      {actions.length > 0 && (
+        <p className="board-help-actions">
+          {actions.map((action) => (
+            <button
+              key={action.label}
+              type="button"
+              className="btn btn-small"
+              onClick={() => {
+                onAction?.();
+                action.onSelect();
+              }}
+            >
+              {action.label}
+            </button>
+          ))}
+        </p>
+      )}
       {/* 手機、平板沒有鍵盤和滑鼠：換成觸控的兩個手勢（CSS 看 pointer: coarse 切換） */}
       <div className="board-help-keyboard">
         <h3>{g.tools}</h3>

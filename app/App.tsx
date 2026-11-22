@@ -23,6 +23,7 @@ import {
   useCompactExamples,
 } from './ExampleControls';
 import { DEFAULT_EXAMPLE, EXAMPLE_IDS, exampleOf, isExampleId, type ExampleId } from './examples';
+import { SpotlightTour, type TourStep } from './SpotlightTour';
 
 // 獨立的白板網站：一張白板存在這個瀏覽器裡，不用登入。
 // 按「共用」會建立一個共用房間，網址後面加上 #room=…，把網址傳給別人就能一起編輯；
@@ -34,6 +35,8 @@ const LOCALE_KEY = 'dsa-whiteboard:locale';
 const NAME_KEY = 'dsa-whiteboard:name';
 /** 自己選的深色或淺色；沒選過就跟著系統（index.html 在畫面出來前先套上） */
 const THEME_KEY = 'dsa-whiteboard:theme';
+/** 看過（或跳過）聚光燈導覽了；「?」裡可以再看一次 */
+const TOUR_KEY = 'dsa-whiteboard:tour';
 const PAPER = { light: '#f3f5f8', dark: '#0e1829' };
 const REPO_URL = 'https://github.com/Lego514/dsa-whiteboard';
 /** 共用房間的伺服器；建置時沒設定就不顯示「共用」 */
@@ -60,6 +63,24 @@ const TEXT = {
     blankBoard: '開空白白板',
     myBoard: '我的白板',
     replaceWithExample: '要用這個範例取代你自己的白板嗎？你原本的白板會被蓋掉。',
+    replayTour: '再看一次導覽',
+    tour: {
+      label: '白板導覽',
+      next: '下一步',
+      back: '上一步',
+      done: '開始畫',
+      skip: '跳過',
+      progress: (step: number, total: number) => `${step} / ${total}`,
+    },
+    tourSteps: [
+      {
+        title: '元件',
+        body: '陣列、樹、鏈結串列、圖⋯點一下放到白板上，或拖到想放的位置。第一個「貼上範例」：貼 LeetCode 範例的 Input，一次畫好。',
+      },
+      { title: '工具列', body: '選取、移動畫面、箭頭、形狀、畫筆和顏色。選了白板上的東西，這裡會換成改它的按鈕，例如複製、刪除。' },
+      { title: '一步一步記下來', body: '畫好一個狀態按 ● 記一步（鍵盤 S），改一改再記下一步。按 ▶ 從頭播放，播放時下面那一列可以寫每一步的說明。' },
+      { title: '操作說明', body: '快捷鍵和每個元件怎麼用都在這裡。這個導覽也可以從這裡再看一次。' },
+    ],
   },
   en: {
     switchTo: '中',
@@ -80,6 +101,30 @@ const TEXT = {
     blankBoard: 'Blank board',
     myBoard: 'My board',
     replaceWithExample: 'Replace your own board with this example? Your current board will be overwritten.',
+    replayTour: 'Show the tour again',
+    tour: {
+      label: 'Whiteboard tour',
+      next: 'Next',
+      back: 'Back',
+      done: 'Start drawing',
+      skip: 'Skip',
+      progress: (step: number, total: number) => `${step} of ${total}`,
+    },
+    tourSteps: [
+      {
+        title: 'Elements',
+        body: 'Arrays, trees, linked lists, graphs… Click one to add it, or drag it where you want. The first one, “Paste example”, draws a LeetCode example’s Input in one go.',
+      },
+      {
+        title: 'Toolbar',
+        body: 'Select, move the view, arrows, shapes, pen and colours. When something on the board is selected, this turns into buttons for it, like duplicate and delete.',
+      },
+      {
+        title: 'Record steps',
+        body: 'Draw a state and press ● to record a step (S on a keyboard), change it, record the next. Press ▶ to replay from the start; during playback, the bar at the bottom holds each step’s caption.',
+      },
+      { title: 'Help', body: 'Shortcuts and how each element works are in here. You can also replay this tour from here.' },
+    ],
   },
 } satisfies Record<Locale, unknown>;
 
@@ -117,6 +162,13 @@ function exampleFromLocation(): ExampleId | null {
   const linked = params.get('example');
   if (isExampleId(linked)) return linked;
   return hasOwnBoard() ? null : DEFAULT_EXAMPLE;
+}
+
+/** 導覽每一步亮哪裡，跟 TEXT 的 tourSteps 一一對應。工具列在選了東西時換成選取列，兩個都可以 */
+const TOUR_TARGETS = ['.board-palette', '.board-tools, .board-selbar', '.board-steps-widget', '.board-zoom [aria-expanded]'] as const;
+
+function tourSeen(): boolean {
+  return storage()?.getItem(TOUR_KEY) === 'done';
 }
 
 function initialLocale(): Locale {
@@ -239,6 +291,12 @@ export function App() {
   const compactExamples = useCompactExamples();
   /** 範例播放時按了左邊的元件：顯示 ExampleDrawPrompt */
   const [drawPrompt, setDrawPrompt] = useState(false);
+  /** 第一次在自己的白板上（看完範例、開始畫的時候）放聚光燈導覽；看過就不再放，「?」裡可以再看 */
+  const [touring, setTouring] = useState(() => !tourSeen());
+  const endTour = () => {
+    setTouring(false);
+    storage()?.setItem(TOUR_KEY, 'done');
+  };
 
   // 上一頁、下一頁或手動改網址時，跟著換房間
   const onHashChange = useEffectEvent(() => {
@@ -449,18 +507,25 @@ export function App() {
         }
       : undefined;
 
+  const tourSteps: TourStep[] = text.tourSteps.map((step, i) => ({ ...step, target: TOUR_TARGETS[i] }));
+
   return (
-    <Whiteboard
-      key={room ? `${room.viewOnly ? 'view' : 'room'}:${room.id}` : 'local'}
-      locale={locale}
-      initial={room ? (created === room.id ? localDoc : EMPTY_DOC) : localDoc}
-      onSave={save}
-      onChange={(doc) => (current.current = doc)}
-      title="DSA Whiteboard"
-      exportName="dsa-whiteboard"
-      menu={room ? menu : [...exampleMenu(), ...menu]}
-      actions={actions}
-      collab={collab}
-    />
+    <>
+      <Whiteboard
+        key={room ? `${room.viewOnly ? 'view' : 'room'}:${room.id}` : 'local'}
+        locale={locale}
+        initial={room ? (created === room.id ? localDoc : EMPTY_DOC) : localDoc}
+        onSave={save}
+        onChange={(doc) => (current.current = doc)}
+        title="DSA Whiteboard"
+        exportName="dsa-whiteboard"
+        menu={room ? menu : [...exampleMenu(), ...menu]}
+        actions={actions}
+        collab={collab}
+        // 共用房間裡不放導覽：別人正在畫，蓋住畫面會打斷
+        helpActions={room ? undefined : [{ label: text.replayTour, onSelect: () => setTouring(true) }]}
+      />
+      {touring && !room && <SpotlightTour steps={tourSteps} text={text.tour} onClose={endTour} />}
+    </>
   );
 }

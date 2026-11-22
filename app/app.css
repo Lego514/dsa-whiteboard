@@ -174,3 +174,94 @@
   width: 16px;
   height: 16px;
 }
+
+/* 聚光燈導覽：亮起來那一塊用很大的陰影把其他地方蓋暗，框線用螢光筆的黃色（跟範例按鈕一樣的「看這裡」）。
+   深色模式的畫面本來就暗：蓋得更暗一點才分得出來，框線用亮的黃（深色的 --marker 是給底色用的暗金） */
+:root {
+  --tour-dim: rgb(8 15 30 / 55%);
+  --tour-ring: var(--marker);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --tour-dim: rgb(0 0 0 / 68%);
+    --tour-ring: #f5d44a;
+  }
+}
+
+:root[data-theme='dark'] {
+  --tour-dim: rgb(0 0 0 / 68%);
+  --tour-ring: #f5d44a;
+}
+
+.app-tour {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+}
+
+.app-tour-hole,
+.app-tour-dim {
+  position: fixed;
+  pointer-events: none;
+}
+
+.app-tour-hole {
+  border-radius: 10px;
+  outline: 3px solid var(--tour-ring);
+  box-shadow: 0 0 0 200vmax var(--tour-dim);
+  transition:
+    left 0.25s ease,
+    top 0.25s ease,
+    width 0.25s ease,
+    height 0.25s ease;
+}
+
+.app-tour-dim {
+  inset: 0;
+  background: var(--tour-dim);
+}
+
+.app-tour-card {
+  position: fixed;
+  width: min(320px, calc(100vw - 24px));
+  padding: 14px 16px 12px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--sheet);
+  color: var(--ink);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 24%);
+}
+
+.app-tour-progress {
+  margin: 0 0 2px;
+  color: var(--ink-3);
+  font-size: 12px;
+}
+
+.app-tour-title {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+
+.app-tour-body {
+  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.app-tour-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.app-tour-skip {
+  margin-right: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-tour-hole {
+    transition: none;
+  }
+}

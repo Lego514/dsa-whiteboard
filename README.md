@@ -130,6 +130,7 @@ The board takes the whole screen. You own the storage: `onSave` is called about 
 | `exportName` | File name for exported PNGs. |
 | `onNotice(message)` | Shows messages (such as a failed export) with your app's toasts instead of the board's own. |
 | `readOnlySteps`, `startAtStep`, `autoPlay` | For ready-made walkthroughs: `startAtStep` opens playing from that step, `readOnlySteps` makes captions read-only, and `autoPlay` plays through once and stops on the last step. Each step stays up long enough to read its caption. |
+| `helpActions` | Extra buttons at the top of the help panel, as `{ label, onSelect }`. The panel closes before `onSelect` runs (the site uses it for “Show the tour again”). |
 | `onChange(doc)` | Called right away on every change (and once when the board opens), without waiting for the save delay. |
 | `collab` | Joins a live room: `{ url, name, seed?, viewOnly?, onStatus? }`. `url` is the room's WebSocket address on the collab server (`…/room/<room id>` to edit, `…/view/<view id>` to watch; set `viewOnly` with the second), `name` is shown next to your cursor, `seed` puts your board into the room if it's empty (for whoever creates it), and `onStatus` reports the connection and who's there. While in a room, the room's board is the one shown. |
 | `explain` | Adds an Explain button that plays the recorded steps. You provide `Session` (shown under the playback bar while explaining) and `Review` (shown over the board when done). LeetCode Coach uses it for spoken explanations with a timer, recording, and transcript. |

@@ -388,6 +388,17 @@
   transform-origin: 0 0;
 }
 
+/* 手機上播放時畫面跟著每一步走：滑過去，看得出是同一張白板換了個地方看 */
+.board-world[data-gliding] {
+  transition: transform 0.35s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-world[data-gliding] {
+    transition: none;
+  }
+}
+
 .board-ink {
   position: absolute;
   top: 0;
@@ -1949,6 +1960,57 @@ textarea.board-text-input {
 
   .board-playback {
     width: calc(100% - 24px);
+  }
+
+  /* 播放時元件庫用不到（本來就停用）：手機上整條收起來，白板多一點高度 */
+  .board[data-playing] .board-palette {
+    display: none;
+  }
+
+  .board[data-playing] .board-body {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  /* 步驟改成一排小圓點（第幾步寫在左邊），跟按鈕排在同一行，播放列少一行；
+     步驟多時圓點那一段自己左右滑，不換行 */
+  .board-step-dots {
+    flex: 1 1 0;
+    justify-content: flex-end;
+    min-width: 0;
+    gap: 0;
+  }
+
+  .board-step-dots button {
+    position: relative;
+    width: 16px;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-size: 0;
+  }
+
+  .board-step-dots button::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 8px;
+    height: 8px;
+    margin: -4px 0 0 -4px;
+    border-radius: 50%;
+    background: var(--rule-strong);
+  }
+
+  .board-step-dots button[aria-current='step'] {
+    background: none;
+  }
+
+  .board-step-dots button[aria-current='step']::before {
+    width: 10px;
+    height: 10px;
+    margin: -5px 0 0 -5px;
+    background: var(--pen);
   }
 }
 

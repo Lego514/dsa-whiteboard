@@ -148,7 +148,51 @@ test('opens an example from my own board, and comes back to the board', async ({
   await expect(page.getByRole('group', { name: /^Array nums/ })).toBeVisible();
 });
 
+// 手機放不下整張白板（206 最後一步左邊是串列、右邊是複雜度和便利貼，要縮到 30% 左右）：
+// 不縮成一小塊，每一步把那一步放在播放列上面、看得清楚的大小；元件庫收起來、步驟改成一排小圓點
+test('on a phone, follows each step at a readable size instead of shrinking the whole board', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('./#example=206');
+  await expect(position(page)).toHaveText('Step 1 of 7');
+  await page.getByRole('button', { name: 'Pause (Space)' }).click();
+  const zoom = page.getByRole('button', { name: 'Reset zoom to 100%' });
+  const percent = async () => Number((await zoom.textContent())?.replace('%', ''));
+  const onScreen = async (name: string | RegExp) => {
+    const box = await page.getByText(name).first().boundingBox();
+    const bar = await page.locator('.board-playback').boundingBox();
+    const width = await page.evaluate(() => window.innerWidth);
+    return box !== null && bar !== null && box.x >= 0 && box.x + box.width <= width && box.y + box.height <= bar.y;
+  };
+
+  // 元件庫播放時用不到：收起來
+  await expect(page.getByRole('button', { name: 'Array', exact: true })).toBeHidden();
+  // 收起來的元件庫量出來是 (0, 0) 的空框：鍵盤按下去的點擊座標是 (0, 0)，不能當成點到元件庫
+  await page.getByRole('button', { name: 'Go to step 1' }).dispatchEvent('click', { clientX: 0, clientY: 0 });
+  await expect(page.getByText('The example is playing')).toHaveCount(0);
+  // 小圓點跟「第幾步」排在同一行
+  const count = await position(page).boundingBox();
+  const dot = await page.getByRole('button', { name: 'Go to step 7' }).boundingBox();
+  expect(Math.abs((count?.y ?? 0) + (count?.height ?? 0) / 2 - ((dot?.y ?? 0) + (dot?.height ?? 0) / 2))).toBeLessThan(8);
+
+  // 第一步只有串列：整條在畫面裡、看得清楚（以前是 50%、擠在左邊；390 寬的手機是 100%）
+  await expect.poll(() => onScreen('null')).toBe(true);
+  expect(await percent()).toBeGreaterThanOrEqual(60);
+  // 複雜度那一步：畫面移到複雜度，字還看得清楚
+  await page.getByRole('button', { name: 'Go to step 6' }).click();
+  await expect.poll(() => onScreen('O(n)')).toBe(true);
+  expect(await percent()).toBeGreaterThanOrEqual(60);
+  // 最後一步：便利貼
+  await page.getByRole('button', { name: 'Go to step 7' }).click();
+  await expect.poll(() => onScreen(/^Empty list or a single node/)).toBe(true);
+  expect(await percent()).toBeGreaterThanOrEqual(60);
+
+  // 結束播放：元件庫回來
+  await page.getByRole('button', { name: 'Stop playback (Esc)' }).click();
+  await expect(page.getByRole('button', { name: 'Array', exact: true })).toBeVisible();
+});
+
 test('explains why the elements do nothing while an example plays, and offers a way to draw', async ({ page }) => {
+  test.skip((page.viewportSize()?.width ?? 1280) <= 760, '手機上播放時元件庫整條收起來，點不到');
   await page.goto('./');
   await expect(position(page)).toHaveText('Step 1 of 7');
   // 播放時元件區不能用（點擊穿過去，所以用 force）：按了要說為什麼，不是沒反應

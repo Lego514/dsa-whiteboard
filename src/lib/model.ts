@@ -2554,6 +2554,18 @@ export function stepDoc(doc: BoardDoc, index: number): BoardDoc {
   return { elements: doc.steps?.[index]?.elements ?? [] };
 }
 
+/**
+ * 這一步改了或新加的東西的範圍：畫面小到放不下整張白板時（手機），播放跟著這一塊走。
+ * 第一步、或只刪了東西沒有新的，就是整步的範圍；沒有步驟或那一步是空的回傳 null
+ */
+export function stepFocus(doc: BoardDoc, index: number, sizes?: Sizes): Rect | null {
+  const step = stepDoc(doc, index);
+  const before = index > 0 ? new Map(stepDoc(doc, index - 1).elements.map((el) => [el.id, JSON.stringify(el)])) : null;
+  const changed = before ? step.elements.filter((el) => before.get(el.id) !== JSON.stringify(el)) : [];
+  const boxes = changed.flatMap((el) => elementBounds(step, el, sizes) ?? []);
+  return boxes.length > 0 ? boxes.reduce(unionRect) : contentBounds(step, sizes);
+}
+
 /** 清空畫面；記下來的步驟保留 */
 /** 清空畫面；withSteps 時記下的步驟也一起清掉（不然播放出來是已經不在的白板） */
 export function clearElements(doc: BoardDoc, withSteps = false): BoardDoc {

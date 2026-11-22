@@ -243,6 +243,8 @@ function Editor<R>({
   const [autoPlay, setAutoPlay] = useState(autoPlayOnOpen && startAtStep !== undefined);
   /** 講解模式：播放時一邊講一邊錄音；講完是那次的結果 */
   const [explaining, setExplaining] = useState(false);
+  /** 剛記下的那一步（從 0 算）：記步驟的面板下面說一聲，可以順手寫說明。serial 每記一次就換，提示重新計時 */
+  const [recorded, setRecorded] = useState<{ index: number; serial: number } | null>(null);
   const [explained, setExplained] = useState<{ result: R } | null>(null);
   const finishExplain = useRef<(() => void) | null>(null);
   const [savedDoc, setSavedDoc] = useState(initial);
@@ -709,14 +711,20 @@ function Editor<R>({
     if (steps.length >= m.MAX_STEPS) return;
     stopEditing();
     apply(m.captureStep(doc, m.newStepId(doc)));
+    setRecorded((prev) => ({ index: steps.length, serial: (prev?.serial ?? 0) + 1 }));
   };
+  // 復原、刪掉步驟之後那一步可能已經不在了
+  const recordedStep = recorded && recorded.index < steps.length ? recorded : null;
+  const dismissRecorded = useCallback(() => setRecorded(null), []);
 
-  const startPlayback = (index: number) => {
+  /** auto：按「▶ N 步」是直接播下去；講解、參考板書從某一步打開時停著 */
+  const startPlayback = (index: number, auto = false) => {
     stopEditing();
     setSelection(new Set());
     setCellSel(null);
     setShowHelp(false);
-    setAutoPlay(false);
+    setRecorded(null);
+    setAutoPlay(auto);
     setPlaying(index);
   };
 
@@ -1799,7 +1807,11 @@ function Editor<R>({
               onExit={exitPlayback}
               onRestore={restoreFromStep}
               onDelete={deleteCurrentStep}
-              onCaptionStart={() => setHistory((h) => m.checkpoint(h))}
+              onCaptionStart={() => {
+                // 寫說明時停下來，不然打到一半就換到下一步
+                setAutoPlay(false);
+                setHistory((h) => m.checkpoint(h));
+              }}
               onCaption={(caption) => setHistory((h) => m.replace(h, m.setStepCaption(h.present, playIndex, caption)))}
               onCaptionEnd={() => setHistory((h) => m.dropEmptyCheckpoint(h))}
               explain={explaining && Session && <Session index={playIndex} stepCount={steps.length} finishRef={finishExplain} onFinish={endExplain} />}
@@ -1814,7 +1826,17 @@ function Editor<R>({
                 count={steps.length}
                 full={steps.length >= m.MAX_STEPS}
                 onCapture={viewOnly ? undefined : captureCurrentStep}
-                onPlay={() => startPlayback(0)}
+                onPlay={() => startPlayback(0, true)}
+                recorded={
+                  recordedStep && {
+                    ...recordedStep,
+                    caption: steps[recordedStep.index].caption,
+                    onCaptionStart: () => setHistory((h) => m.checkpoint(h)),
+                    onCaption: (caption) => setHistory((h) => m.replace(h, m.setStepCaption(h.present, recordedStep.index, caption))),
+                    onCaptionEnd: () => setHistory((h) => m.dropEmptyCheckpoint(h)),
+                    onDismiss: dismissRecorded,
+                  }
+                }
                 onExplain={explain && !viewOnly ? startExplain : undefined}
               />
               {tool === 'select' && selected.size > 0 && (

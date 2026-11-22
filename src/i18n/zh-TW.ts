@@ -444,6 +444,8 @@ export const zhTW = {
       full: '最多記 50 步',
       count: (n: number) => `${n} 步`,
       playAll: (n: number) => `從頭播放 ${n} 步`,
+      recorded: (i: number) => `已記下第 ${i} 步`,
+      recordedPlaceholder: '用英文寫這一步做了什麼（選填）',
       playbackLabel: '逐步播放',
       position: (i: number, n: number) => `第 ${i} / ${n} 步`,
       prev: '上一步（←）',

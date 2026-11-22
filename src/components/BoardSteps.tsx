@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useEffectEvent, useState, type ReactNode } from 'react';
 import { useI18n } from '../i18n';
 import type { BoardStep } from '../lib/model';
 
@@ -39,6 +39,74 @@ const ICON_PAUSE = (
   </Icon>
 );
 
+/** 記下一步之後提示停多久（毫秒）；滑鼠移上去或在寫說明時不收起來 */
+const RECORDED_NOTE_MS = 6000;
+
+export interface RecordedStep {
+  /** 第幾步（從 0 算） */
+  index: number;
+  /** 每記一次就換，提示重新計時、點點閃一下 */
+  serial: number;
+  caption: string;
+  onCaptionStart: () => void;
+  onCaption: (caption: string) => void;
+  onCaptionEnd: () => void;
+  onDismiss: () => void;
+}
+
+/**
+ * 記下一步之後在面板下面停幾秒：說記到第幾步，可以順手寫這一步的說明。
+ * 不會自己跳進輸入框，連按 S 照樣能一直記下去。
+ */
+function RecordedNote({ index, caption, onCaptionStart, onCaption, onCaptionEnd, onDismiss }: RecordedStep) {
+  const { t } = useI18n();
+  const s = t.board.steps;
+  const [hovered, setHovered] = useState(false);
+  const [typing, setTyping] = useState(false);
+  const dismiss = useEffectEvent(onDismiss);
+  useEffect(() => {
+    if (hovered || typing) return;
+    const timer = window.setTimeout(() => dismiss(), RECORDED_NOTE_MS);
+    return () => window.clearTimeout(timer);
+  }, [hovered, typing]);
+  return (
+    <div className="board-recorded" onPointerEnter={() => setHovered(true)} onPointerLeave={() => setHovered(false)}>
+      <div className="board-recorded-head">
+        <p className="board-recorded-title" role="status">
+          {s.recorded(index + 1)}
+        </p>
+        <button type="button" className="btn btn-quiet btn-small board-recorded-close" aria-label={t.board.close} title={t.board.close} onClick={onDismiss}>
+          ×
+        </button>
+      </div>
+      <input
+        className="input board-recorded-caption"
+        value={caption}
+        placeholder={s.recordedPlaceholder}
+        aria-label={s.captionLabel(index + 1)}
+        maxLength={200}
+        onFocus={() => {
+          setTyping(true);
+          onCaptionStart();
+        }}
+        onBlur={() => {
+          setTyping(false);
+          onCaptionEnd();
+        }}
+        onChange={(e) => onCaption(e.target.value)}
+        onKeyDown={(e) => {
+          // 打字時不要觸發白板的快捷鍵；Enter 寫好了就收起來，Esc 只離開輸入框
+          e.stopPropagation();
+          if (e.key === 'Enter') {
+            e.currentTarget.blur();
+            onDismiss();
+          } else if (e.key === 'Escape') e.currentTarget.blur();
+        }}
+      />
+    </div>
+  );
+}
+
 interface StepsWidgetProps {
   count: number;
   full: boolean;
@@ -47,10 +115,12 @@ interface StepsWidgetProps {
   onPlay: () => void;
   /** 沒給就不顯示「講解」按鈕 */
   onExplain?: () => void;
+  /** 剛記下的那一步：面板下面說一聲，可以寫說明 */
+  recorded?: RecordedStep | null;
 }
 
 /** 編輯時左上角：把目前的畫面記成一步、從頭播放、照著步驟講解 */
-export function StepsWidget({ count, full, onCapture, onPlay, onExplain }: StepsWidgetProps) {
+export function StepsWidget({ count, full, onCapture, onPlay, onExplain, recorded }: StepsWidgetProps) {
   const { t } = useI18n();
   const s = t.board.steps;
   return (
@@ -64,7 +134,8 @@ export function StepsWidget({ count, full, onCapture, onPlay, onExplain }: Steps
           title={full ? s.full : s.captureHint}
           onClick={onCapture}
         >
-          <span className="board-record-dot" aria-hidden />
+          {/* 記下一步時點點閃一下（換 key 讓動畫重播） */}
+          <span key={recorded?.serial ?? 0} className={recorded ? 'board-record-dot board-record-dot-flash' : 'board-record-dot'} aria-hidden />
           <span className="board-steps-text">{s.capture}</span>
         </button>
       )}
@@ -93,6 +164,7 @@ export function StepsWidget({ count, full, onCapture, onPlay, onExplain }: Steps
           <span className="board-steps-text">{t.board.explain.start}</span>
         </button>
       )}
+      {recorded && <RecordedNote key={recorded.serial} {...recorded} />}
     </div>
   );
 }

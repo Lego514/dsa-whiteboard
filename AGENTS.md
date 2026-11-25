@@ -29,6 +29,7 @@ npm run test:e2e     # vite build --mode e2e，再跑 Playwright（Chromium + iP
 npm run lint
 npm run typecheck    # tsc -b（含 worker 的 tsconfig）
 npm run build        # 套件（dist/）和網站（dist-app/）
+npm run check:types  # 用 dist 的型別編一個使用者的檔案（nodenext 和 bundler），要先 build:lib
 npm run worker:dev   # 共用伺服器 http://localhost:8787，不用 Cloudflare 帳號
 ```
 
@@ -57,6 +58,7 @@ e2e/            Playwright；collab.spec.ts 用兩個瀏覽器測一起編輯
 ## 一定要守的規則
 
 - **套件的元件本體不能帶進 zod**：`src/index.ts` 只匯出型別和 `constants.ts`，zod 的 schema 放在 `dsa-whiteboard/schema`。之前在入口匯出 schema，讓刷題教練的 bundle 多了 37KB。
+- **發出去的 `.d.ts` 要有副檔名**：src 裡的 import 沒寫 `.js`，`tsc` 照抄到 `dist/types`，套件又是 `"type": "module"`，用 `moduleResolution: nodenext` 的人會找不到、型別變成 any（issue #34）。`build:lib` 最後由 `scripts/fix-dts-imports.mjs` 補上 `.js`（資料夾補 `/index.js`），找不到對應的 `.d.ts` 就讓建置失敗。`scripts/types-check/consumer.tsx` 從套件名稱 import（不是 src），CI 和發版前跑 `check:types`；新增公開的匯出時在那裡加一行。
 - **介面文字只放在 `src/i18n/`**，兩個語言的 key 要一樣（有測試檢查）。
 - **純邏輯放 `src/lib/`、寫成純函式並寫單元測試**；元件只負責畫面和事件。
 - **`model.ts` 和 `bits.ts`、`unionFind.ts`、`trie.ts` 互相引用**：這些檔案的頂層（常數、`const x = ...`）不能用到 model 的值，只能在函式裡用，不然看誰先載入，會讀到還沒初始化的值。

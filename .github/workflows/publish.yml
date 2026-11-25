@@ -35,4 +35,5 @@ jobs:
       # npm ci 會跑 prepare，建出 dist/
       - run: npm ci
       - run: npm test
+      - run: npm run check:types
       - run: npm publish --provenance

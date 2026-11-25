@@ -20,6 +20,8 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      # 用套件的人在 nodenext 和 bundler 下都拿得到完整的型別（scripts/types-check，issue #34）
+      - run: npm run check:types
       # 共用房間的伺服器打包得起來（不用 Cloudflare 帳號）
       - run: npx wrangler deploy --dry-run --outdir dist-worker
         env:

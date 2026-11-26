@@ -1,0 +1,79 @@
+# Elements and tools
+
+Everything the board can draw, and how each piece behaves. Back to the [README](../README.md).
+
+- **Range frames** box the cells between two pointers on the same array and follow them as they move, for sliding windows: select the two pointers and choose "Frame between pointers".
+- **Templates** set up a common scene in one click, with the pointers already named: two pointers, sliding window, reversing a linked list, tree DFS, grid BFS, and backtracking (the subsets decision tree with `path` and a `cur` pointer). The whole group is placed in free space and selected so it can be dragged at once.
+- The palette is grouped by how often problems use each element, with line icons. Text switches to a heading from the selection bar.
+- **Pointers** snap to array cells, step with the arrow keys, and are colored by name (i, j, k, l).
+- **Single cells** can be selected one at a time to highlight them, put a pointer on them, insert next to them, or delete them. Pointers and highlights follow their values when cells move. A dashed "+" adds cells, rows, and columns.
+- **Linked lists** are one element:
+  - Each link between two nodes cycles between forward, reversed, and cut with a click, so reversing a list can be traced link by link.
+  - The tail can point back to any node to show a cycle.
+  - Pointers such as prev, curr, and next snap under nodes.
+- **Binary trees** lay themselves out in order, so a binary search tree reads sorted from left to right.
+  - Pick a node to add a left or right child from a dashed slot, color it, or delete its subtree.
+  - Pointers sit above nodes and move to a child or the parent with the arrow keys.
+  - Up to six levels.
+- **Graphs** lay their nodes out on a circle.
+  - Directed graphs get arrowheads, and opposite edges between the same two nodes curve apart.
+  - Edges can carry weights and be marked as visited.
+  - Pick a node to connect it to another, color it, add a pointer, or delete it. Pick an edge to mark it, weigh it, or delete it.
+  - Up to 20 nodes and 60 edges.
+- **Heaps** draw the same values as a tree and as an array with indices, or either one alone.
+  - Push and Pop sift values into place by the heap rules; "Record each step for playback" saves every swap as a step, captioned like `swap 0 ↔ 2`.
+  - Switch between a min-heap and a max-heap. Nodes that break the order turn red, and Heapify fixes them all at once.
+  - Values compare as numbers when they are numbers. Up to 31 values (five levels).
+- **Recursion trees** draw one node per call, laid out top-down so each caller sits over its calls, for backtracking and memoized DP.
+  - Pick a call to add a child call, write its return value or the choice on the edge above it, or prune the branch (drawn dashed and faded).
+  - "Color repeated calls" gives calls with the same label the same color, which shows what memoization would save.
+  - A pointer steps through the calls in DFS order with ← →, and back to the caller with ↑, so a trace can be recorded step by step.
+  - Up to 63 calls and eight levels.
+- **DP tables** fill one cell at a time, 1D (`dp[i]`) or 2D (`dp[i][j]`), with the strings or numbers from the problem written beside the rows and columns.
+  - Choose what each cell depends on (`dp[i-1], dp[i-2]`, every earlier `dp[j]`, `dp[i-k]` for coins, up/left/diagonal, or `dp[i+1][j-1]` filled from the bottom row for palindromes). The cell being filled then shows arrows from those cells, as arcs under a 1D table.
+  - Type the value in the selection bar and press Enter to move to the next empty cell. With "Record each filled cell" on, every cell becomes a playback step captioned like `dp[2][3] = 2`, so the whole fill order can be replayed.
+  - Up to 26 rows and 30 columns.
+- **Intervals** sit on one number line with round ticks, one row per interval, so overlaps line up, for Merge Intervals, Insert Interval, Meeting Rooms, and the like.
+  - "Sort by start" is the first step of merging. Pick an interval to change its start or end, merge it with the next row when they overlap (touching ends count), mark it removed (dashed), or color it.
+  - The sweep line stops at each start and end point and shows how many intervals are in progress there, counting starts but not ends, so its peak is the answer to Meeting Rooms II.
+  - Up to 30 intervals.
+- **Union-Find** draws the parent array and the forest it describes: one tree per set, arrows from each node to its parent, and a loop on each root. Merged sets share a color, and the name shows how many sets there are.
+  - Pick a node to Find it (with path compression) or Union it with another node. The nodes a find walks through are outlined, and "Record each step for playback" saves the walk, the compression, and the merge as separate steps.
+  - Union by rank adds a rank row and puts the shorter tree under the taller one.
+  - Up to 20 nodes.
+- **Tries** grow from the words put into them, children in alphabetical order, with a green ring on letters that end a word.
+  - Insert walks the shared prefix first, then adds the rest. Search follows the letters as far as they go and says found, prefix only, or not found. Both can be recorded letter by letter.
+  - Pick a node to search its prefix or remove its word. Up to 30 words of 16 letters.
+- **Bits** draw a number as a row of 0s and 1s, with bit positions below and the decimal value and count of 1s beside the name.
+  - Click a bit to flip it. Shift left or right, clear the lowest 1 with `n & (n-1)`, or type a new number. Up to 32 bits.
+- **Code boxes** look and type like LeetCode's editor: a `Python3` header, line numbers, and Python colors in VS Code's light and dark themes, with no wrapping and the box sized to the code. New boxes start from a `class Solution:` template.
+  - While editing, the colors stay on screen: a transparent text box sits exactly over the highlighted code. Tab and Shift+Tab indent and outdent, Enter keeps the indentation (one more level after a colon), and Backspace in the indentation removes a level.
+- **Code tracing** turns a code box into a dry run, the Test step of an interview.
+  - "Trace line by line" highlights the line running. Move with ↑ ↓ or by clicking a line; blank lines are skipped.
+  - With "Record each line" on, every move first saves the board as a step with the line that just ran highlighted. Update the variables and arrays beside it as you go, and playback replays the whole run, with room for a one-line note per step.
+- **Paste example** (top of the palette) draws a problem's whole Input at once: `nums = [2,7,11,15], target = 9` becomes an array and a variable, selected together so the group can be dragged into place.
+  - Copying the example straight from LeetCode works, `Input:` and `Output:` included.
+  - Names decide the shape: `root` is a tree, `head` or `l1` a linked list, `edges` or `prerequisites` with `n` or `numCourses` a graph (directed for prerequisites), `intervals` with an optional `newInterval` a number line, other 2D arrays a grid, and objects a dict.
+  - Strings are split into characters, and numbers and booleans become variables.
+- **Build from text**: arrays, stacks, queues, heaps, sets, dicts, 2D arrays, linked lists, trees, graphs, recursion trees, Union-Find, tries, bits, DP tables, and intervals can all be filled by pasting a problem's example instead of typing cell by cell:
+  - `nums = [2,7,11,15], target = 9` takes the first value and renames the element `nums`
+  - `"abcabcbb"` splits into characters
+  - `{'a': 1}` or JSON for dicts, and `[[1,0],[0,1]]` for grids
+  - `1->2->3` and `head = [...]` for linked lists, and LeetCode's level order `[3,9,20,null,null,15,7]` for trees
+  - `n = 5, edges = [[0,1],[0,2]]` (with optional weights) or an adjacency list (0- or 1-based) for graphs
+  - an indented outline for recursion trees, one call per line, such as `f(3) => 2` with `n-1 | f(2)` underneath (`|` puts a label on the edge, `=>` adds a return value); the output of the `tree` command also works
+  - the problem's own input for DP tables: `text1 = "abcde", text2 = "ace"` makes a 6×4 table with the letters beside it, `m = 3, n = 7` a 3×7 grid, `n = 5` six cells, `coins = [1,2,5], amount = 11` twelve cells that look back 1, 2, and 5, and `s = "226"` or `nums = [...]` a row labeled with the characters or numbers
+  - `n = 5, edges = [[0,1],[1,2]]` (merged in order) or `parent = [0,0,1]` for Union-Find, `["apple","app"]` for tries, and `n = 11`, `0b1011`, or LeetCode's 32-character bit strings for bits
+  - `intervals = [[1,3],[2,6]]` for intervals; a `newInterval = [4,8]` is added in yellow, and an employee `schedule` gets one color per person
+- **Other tools**:
+  - rectangle and ellipse frames, which draw on top but stay click-through except their outline; hold Shift or Ctrl for a square or circle, and again while dragging the corner to resize without changing the shape
+  - arrows and plain lines (for undirected edges) that follow the elements they connect
+  - a pen, an eraser, and five colors
+  - undo/redo and clear canvas
+- **Box selection**: drag across empty space to select everything inside, then move, duplicate, delete, or recolor it together. Copies keep pointers on their copied arrays and rewire arrows to the copied elements.
+- **Step playback**: "Record step" saves a snapshot of the board with an optional one-line note (writing it in English doubles as explanation practice). Playback steps through the snapshots with the arrow keys or plays them automatically; elements slide from one step to the next. You can continue editing from any step.
+- **Export image**: the board, or the step being played, is redrawn from its data as an SVG and saved as a 2× PNG.
+- **Live co-editing**: Share turns your board into a room at a link like `…/#room=k3f9x2…`. Up to 8 people edit it together and see each other's cursors. Undo only takes back your own changes. Edits made while offline are sent when the connection comes back. Your own board stays as it was; "Save a copy to my board" keeps the shared one. Rooms are kept for 7 days after the last person leaves.
+- **View-only links**: the room menu also has a link like `…/#view=urgfdy…` for people who should watch but not draw. They see every change live and can pan, zoom and play the steps, but get no elements or tools, and the server refuses any change they send. The view code is a hash of the room id, so it can't be turned back into the edit link.
+
+The interface is in English and Traditional Chinese. Light and dark follow your system; on the site, the button at the top right switches them and remembers your choice.

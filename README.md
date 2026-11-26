@@ -1,108 +1,32 @@
 # DSA Whiteboard
 
-[![npm](https://img.shields.io/npm/v/dsa-whiteboard)](https://www.npmjs.com/package/dsa-whiteboard)
+[![npm](https://img.shields.io/npm/v/dsa-whiteboard)](https://www.npmjs.com/package/dsa-whiteboard) [![CI](https://github.com/Lego514/dsa-whiteboard/actions/workflows/ci.yml/badge.svg)](https://github.com/Lego514/dsa-whiteboard/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/npm/l/dsa-whiteboard)](LICENSE)
 
-A whiteboard for data structures and algorithms, built from scratch in React and TypeScript.
+A whiteboard for tracing data structures and algorithms by hand, with step-by-step playback and live co-editing. It's a React component on npm, and a site you can use right now.
 
-**Try it:** https://dsaboard.legoli.dev/ (no sign-up; the board is saved in your browser). On a first visit it plays an example walkthrough, step by step with a caption for each step; **Edit this board** keeps it, **Blank board** starts fresh. Examples have their own links: [206. Reverse Linked List](https://dsaboard.legoli.dev/#example=206), [1143. Longest Common Subsequence](https://dsaboard.legoli.dev/#example=1143), [200. Number of Islands](https://dsaboard.legoli.dev/#example=200). Press **Share** to get a link: everyone who opens it edits the same board live, with each person's cursor and name on the canvas. A second, view-only link lets someone watch, for example an interviewer in a mock interview.
+**[Open the whiteboard](https://dsaboard.legoli.dev/)** (no sign-up, saved in your browser) · Examples: [206. Reverse Linked List](https://dsaboard.legoli.dev/#example=206), [1143. Longest Common Subsequence](https://dsaboard.legoli.dev/#example=1143), [200. Number of Islands](https://dsaboard.legoli.dev/#example=200)
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/board-dark.png"><img src="docs/images/board-light.png" alt="The whiteboard with the Tree DFS template: a binary tree, a node pointer on the root, and a stack"></picture>
+![Two browser windows editing one shared board: Bob's cursor and name show up on Alice's board, the variable Bob drags in appears on both, and the pointer Alice moves follows on Bob's side](docs/images/co-editing.gif)
 
-Drag arrays, pointers, stacks, queues, dicts, sets, 2D arrays, variables, binary trees, linked lists, graphs, heaps, recursion trees, Union-Find, tries, bits, DP tables, intervals, tables, text, code, and sticky notes onto a pannable, zoomable canvas to trace an idea by hand.
+*Two people on one board. Left: Alice. Right: Bob, who opened Alice's link.*
 
-Built for working through LeetCode-style problems by hand: sliding windows, linked list reversal, tree and graph traversals, heaps, backtracking, Union-Find, tries, bit manipulation, DP tables, and intervals. It started as the whiteboard in [LeetCode Coach](https://github.com/Lego514/leetcode-coach), which still uses it as a package.
+- **Elements that behave like the real thing.** 20+ elements, from arrays and pointers to trees, graphs, heaps, Union-Find, tries, DP tables, and intervals. A linked list's links reverse one at a time, a heap sifts values into place, Union-Find compresses paths, and a DP table draws arrows from the cells it depends on.
+- **Paste a LeetCode example.** `nums = [2,7,11,15], target = 9` becomes an array and a variable; `root = [3,9,20,null,null,15,7]` becomes a tree.
+- **Step-by-step playback.** Record the board as steps with a caption each, then play them back; elements slide from one step to the next. Code boxes can be traced line by line.
+- **Live co-editing.** Share a link and up to 8 people edit together with their cursors on the canvas. A second, view-only link lets someone watch, such as an interviewer in a mock interview.
+- **Export and themes.** Save a PNG of the board or the current step. English and Traditional Chinese, light and dark.
 
-## Features
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/reference-board-dark.gif"><img src="docs/images/reference-board-light.gif" alt="A walkthrough of Reverse Linked List playing step by step: prev, curr, and next move along the list, each step has a one-line caption, and the last steps add the complexity and an edge case"></picture>
 
-- **Range frames** box the cells between two pointers on the same array and follow them as they move, for sliding windows: select the two pointers and choose "Frame between pointers".
-- **Templates** set up a common scene in one click, with the pointers already named: two pointers, sliding window, reversing a linked list, tree DFS, grid BFS, and backtracking (the subsets decision tree with `path` and a `cur` pointer). The whole group is placed in free space and selected so it can be dragged at once.
-- The palette is grouped by how often problems use each element, with line icons. Text switches to a heading from the selection bar.
-- **Pointers** snap to array cells, step with the arrow keys, and are colored by name (i, j, k, l).
-- **Single cells** can be selected one at a time to highlight them, put a pointer on them, insert next to them, or delete them. Pointers and highlights follow their values when cells move. A dashed "+" adds cells, rows, and columns.
-- **Linked lists** are one element:
-  - Each link between two nodes cycles between forward, reversed, and cut with a click, so reversing a list can be traced link by link.
-  - The tail can point back to any node to show a cycle.
-  - Pointers such as prev, curr, and next snap under nodes.
-- **Binary trees** lay themselves out in order, so a binary search tree reads sorted from left to right.
-  - Pick a node to add a left or right child from a dashed slot, color it, or delete its subtree.
-  - Pointers sit above nodes and move to a child or the parent with the arrow keys.
-  - Up to six levels.
-- **Graphs** lay their nodes out on a circle.
-  - Directed graphs get arrowheads, and opposite edges between the same two nodes curve apart.
-  - Edges can carry weights and be marked as visited.
-  - Pick a node to connect it to another, color it, add a pointer, or delete it. Pick an edge to mark it, weigh it, or delete it.
-  - Up to 20 nodes and 60 edges.
-- **Heaps** draw the same values as a tree and as an array with indices, or either one alone.
-  - Push and Pop sift values into place by the heap rules; "Record each step for playback" saves every swap as a step, captioned like `swap 0 ↔ 2`.
-  - Switch between a min-heap and a max-heap. Nodes that break the order turn red, and Heapify fixes them all at once.
-  - Values compare as numbers when they are numbers. Up to 31 values (five levels).
-- **Recursion trees** draw one node per call, laid out top-down so each caller sits over its calls, for backtracking and memoized DP.
-  - Pick a call to add a child call, write its return value or the choice on the edge above it, or prune the branch (drawn dashed and faded).
-  - "Color repeated calls" gives calls with the same label the same color, which shows what memoization would save.
-  - A pointer steps through the calls in DFS order with ← →, and back to the caller with ↑, so a trace can be recorded step by step.
-  - Up to 63 calls and eight levels.
-- **DP tables** fill one cell at a time, 1D (`dp[i]`) or 2D (`dp[i][j]`), with the strings or numbers from the problem written beside the rows and columns.
-  - Choose what each cell depends on (`dp[i-1], dp[i-2]`, every earlier `dp[j]`, `dp[i-k]` for coins, up/left/diagonal, or `dp[i+1][j-1]` filled from the bottom row for palindromes). The cell being filled then shows arrows from those cells, as arcs under a 1D table.
-  - Type the value in the selection bar and press Enter to move to the next empty cell. With "Record each filled cell" on, every cell becomes a playback step captioned like `dp[2][3] = 2`, so the whole fill order can be replayed.
-  - Up to 26 rows and 30 columns.
-- **Intervals** sit on one number line with round ticks, one row per interval, so overlaps line up, for Merge Intervals, Insert Interval, Meeting Rooms, and the like.
-  - "Sort by start" is the first step of merging. Pick an interval to change its start or end, merge it with the next row when they overlap (touching ends count), mark it removed (dashed), or color it.
-  - The sweep line stops at each start and end point and shows how many intervals are in progress there, counting starts but not ends, so its peak is the answer to Meeting Rooms II.
-  - Up to 30 intervals.
-- **Union-Find** draws the parent array and the forest it describes: one tree per set, arrows from each node to its parent, and a loop on each root. Merged sets share a color, and the name shows how many sets there are.
-  - Pick a node to Find it (with path compression) or Union it with another node. The nodes a find walks through are outlined, and "Record each step for playback" saves the walk, the compression, and the merge as separate steps.
-  - Union by rank adds a rank row and puts the shorter tree under the taller one.
-  - Up to 20 nodes.
-- **Tries** grow from the words put into them, children in alphabetical order, with a green ring on letters that end a word.
-  - Insert walks the shared prefix first, then adds the rest. Search follows the letters as far as they go and says found, prefix only, or not found. Both can be recorded letter by letter.
-  - Pick a node to search its prefix or remove its word. Up to 30 words of 16 letters.
-- **Bits** draw a number as a row of 0s and 1s, with bit positions below and the decimal value and count of 1s beside the name.
-  - Click a bit to flip it. Shift left or right, clear the lowest 1 with `n & (n-1)`, or type a new number. Up to 32 bits.
-- **Code boxes** look and type like LeetCode's editor: a `Python3` header, line numbers, and Python colors in VS Code's light and dark themes, with no wrapping and the box sized to the code. New boxes start from a `class Solution:` template.
-  - While editing, the colors stay on screen: a transparent text box sits exactly over the highlighted code. Tab and Shift+Tab indent and outdent, Enter keeps the indentation (one more level after a colon), and Backspace in the indentation removes a level.
-- **Code tracing** turns a code box into a dry run, the Test step of an interview.
-  - "Trace line by line" highlights the line running. Move with ↑ ↓ or by clicking a line; blank lines are skipped.
-  - With "Record each line" on, every move first saves the board as a step with the line that just ran highlighted. Update the variables and arrays beside it as you go, and playback replays the whole run, with room for a one-line note per step.
-- **Paste example** (top of the palette) draws a problem's whole Input at once: `nums = [2,7,11,15], target = 9` becomes an array and a variable, selected together so the group can be dragged into place.
-  - Copying the example straight from LeetCode works, `Input:` and `Output:` included.
-  - Names decide the shape: `root` is a tree, `head` or `l1` a linked list, `edges` or `prerequisites` with `n` or `numCourses` a graph (directed for prerequisites), `intervals` with an optional `newInterval` a number line, other 2D arrays a grid, and objects a dict.
-  - Strings are split into characters, and numbers and booleans become variables.
-- **Build from text**: arrays, stacks, queues, heaps, sets, dicts, 2D arrays, linked lists, trees, graphs, recursion trees, Union-Find, tries, bits, DP tables, and intervals can all be filled by pasting a problem's example instead of typing cell by cell:
-  - `nums = [2,7,11,15], target = 9` takes the first value and renames the element `nums`
-  - `"abcabcbb"` splits into characters
-  - `{'a': 1}` or JSON for dicts, and `[[1,0],[0,1]]` for grids
-  - `1->2->3` and `head = [...]` for linked lists, and LeetCode's level order `[3,9,20,null,null,15,7]` for trees
-  - `n = 5, edges = [[0,1],[0,2]]` (with optional weights) or an adjacency list (0- or 1-based) for graphs
-  - an indented outline for recursion trees, one call per line, such as `f(3) => 2` with `n-1 | f(2)` underneath (`|` puts a label on the edge, `=>` adds a return value); the output of the `tree` command also works
-  - the problem's own input for DP tables: `text1 = "abcde", text2 = "ace"` makes a 6×4 table with the letters beside it, `m = 3, n = 7` a 3×7 grid, `n = 5` six cells, `coins = [1,2,5], amount = 11` twelve cells that look back 1, 2, and 5, and `s = "226"` or `nums = [...]` a row labeled with the characters or numbers
-  - `n = 5, edges = [[0,1],[1,2]]` (merged in order) or `parent = [0,0,1]` for Union-Find, `["apple","app"]` for tries, and `n = 11`, `0b1011`, or LeetCode's 32-character bit strings for bits
-  - `intervals = [[1,3],[2,6]]` for intervals; a `newInterval = [4,8]` is added in yellow, and an employee `schedule` gets one color per person
-- **Other tools**:
-  - rectangle and ellipse frames, which draw on top but stay click-through except their outline; hold Shift or Ctrl for a square or circle, and again while dragging the corner to resize without changing the shape
-  - arrows and plain lines (for undirected edges) that follow the elements they connect
-  - a pen, an eraser, and five colors
-  - undo/redo and clear canvas
-- **Box selection**: drag across empty space to select everything inside, then move, duplicate, delete, or recolor it together. Copies keep pointers on their copied arrays and rewire arrows to the copied elements.
-- **Step playback**: "Record step" saves a snapshot of the board with an optional one-line note (writing it in English doubles as explanation practice). Playback steps through the snapshots with the arrow keys or plays them automatically; elements slide from one step to the next. You can continue editing from any step.
-- **Export image**: the board, or the step being played, is redrawn from its data as an SVG and saved as a 2× PNG.
-- **Live co-editing**: Share turns your board into a room at a link like `…/#room=k3f9x2…`. Up to 8 people edit it together and see each other's cursors. Undo only takes back your own changes. Edits made while offline are sent when the connection comes back. Your own board stays as it was; "Save a copy to my board" keeps the shared one. Rooms are kept for 7 days after the last person leaves.
-- **View-only links**: the room menu also has a link like `…/#view=urgfdy…` for people who should watch but not draw. They see every change live and can pan, zoom and play the steps, but get no elements or tools, and the server refuses any change they send. The view code is a hash of the room id, so it can't be turned back into the edit link.
+*A recorded walkthrough playing back, from [LeetCode Coach](https://github.com/Lego514/leetcode-coach), which uses this package for its 213 reference boards.*
 
-  ![Two browser windows editing one shared board: Bob's cursor and name show up on Alice's board, the variable Bob drags in appears on both, and the pointer Alice moves follows on Bob's side](docs/images/co-editing.gif)
-
-  *Left: Alice. Right: Bob, who opened Alice's link.*
-
-The interface is in English and Traditional Chinese. Light and dark follow your system; on the site, the button at the top right switches them and remembers your choice.
+Every element and tool is described in [docs/elements.md](docs/elements.md).
 
 ## Use it in a React app
-
-Install it from [npm](https://www.npmjs.com/package/dsa-whiteboard):
 
 ```bash
 npm install dsa-whiteboard
 ```
-
-Each version is published from a GitHub release by GitHub Actions, with npm provenance showing the commit it was built from.
 
 React 19.2 or later is a peer dependency. zod 4 is needed only if you import `dsa-whiteboard/schema`.
 
@@ -116,40 +40,30 @@ export function MyBoard({ initial, save }: { initial?: BoardDoc; save: (doc: Boa
 }
 ```
 
-The board takes the whole screen. You own the storage: `onSave` is called about 0.6 s after the last change, and once more on close if something is unsaved.
+The board takes the whole screen, and you own the storage:
 
 | Prop | What it does |
 | --- | --- |
 | `initial` | The board to start from. Change the React `key` to load a different board. |
-| `onSave(doc)` | Saves the board; may return a promise. |
-| `title`, `caption`, `badge` | The header. `badge` sits next to the title, for example a difficulty tag. |
-| `actions` | Extra buttons or links in the header, before Export. |
-| `savedLabel` | What the header says once saved, such as "Synced". Defaults to "Saved on this device". |
+| `onSave(doc)` | Called about 0.6 s after the last change, and once more on close if something is unsaved. |
 | `locale` | `'en'` or `'zh-TW'`. |
-| `onClose` | Shows a Close button. |
-| `exportName` | File name for exported PNGs. |
-| `onNotice(message)` | Shows messages (such as a failed export) with your app's toasts instead of the board's own. |
-| `readOnlySteps`, `startAtStep`, `autoPlay` | For ready-made walkthroughs: `startAtStep` opens playing from that step, `readOnlySteps` makes captions read-only, and `autoPlay` plays through once and stops on the last step. Each step stays up long enough to read its caption. |
-| `helpActions` | Extra buttons at the top of the help panel, as `{ label, onSelect }`. The panel closes before `onSelect` runs (the site uses it for “Show the tour again”). |
-| `onChange(doc)` | Called right away on every change (and once when the board opens), without waiting for the save delay. |
-| `collab` | Joins a live room: `{ url, name, seed?, viewOnly?, onStatus? }`. `url` is the room's WebSocket address on the collab server (`…/room/<room id>` to edit, `…/view/<view id>` to watch; set `viewOnly` with the second), `name` is shown next to your cursor, `seed` puts your board into the room if it's empty (for whoever creates it), and `onStatus` reports the connection and who's there. While in a room, the room's board is the one shown. |
-| `explain` | Adds an Explain button that plays the recorded steps. You provide `Session` (shown under the playback bar while explaining) and `Review` (shown over the board when done). LeetCode Coach uses it for spoken explanations with a timer, recording, and transcript. |
+| `collab` | Joins a live room on the collab server. |
+| `readOnlySteps`, `startAtStep`, `autoPlay` | For ready-made walkthroughs that open playing. |
 
-Put `<ShareControls>` in `actions` for the share UI: a Share button outside a room, and inside one the people's avatars (click for who's here, change your name, save a copy, leave) plus Copy link. You decide where the room id lives: `onShare()` creates the room and returns its link (copied for you), `viewLink(viewId)` builds the view-only link shown under it, and `link`, `onRename(name)`, `onSaveCopy()`, `onLeave()` handle the rest. While in a room, the header shows the connection status instead of `savedLabel`.
+Every prop, the share controls, and the schema export for servers are in [docs/react.md](docs/react.md).
 
-`newRoomId()` makes a random room id, `ROOM_ID` checks one and `VIEW_ID` checks a view id; `PEER_COLORS` lists the colors people get, and `[data-peer="blue"]` (and so on) sets `--peer` to that color for your own avatars.
+## How it's built
 
-`dsa-whiteboard/schema` exports the zod schema for a board (`boardDocSchema`), its types, and the size limit, without React, so a server can validate boards before storing them.
+- **No drawing library.** Elements are plain React (HTML, with SVG for edges, arrows, and ink) in one layer that pans and zooms with a CSS transform, and exported images are redrawn from the board's data as SVG. The board model and every edit, layout, and parser live in `src/lib/` as plain functions with no React, which is where most of the unit tests are.
+- **One Durable Object per room.** The collab server is a Cloudflare Worker (`worker/`). Each room runs in its own Durable Object, so its messages are handled one at a time without locks. Clients send the new version of each element they touched; the room checks it with zod, applies changes in the order they arrive, and passes them on, so when two people change the same element at once, everyone ends up with the later one. A room is saved 2 seconds after a change and deleted 7 days after the last person leaves, and idle rooms hibernate, so it fits Cloudflare's free plan.
+- **View-only links are derived, not stored.** The view code is a SHA-256 hash of the room id. The Durable Object is named after it, so both links reach the same room, and whether a connection can edit depends only on the path it came in on (`/room/` or `/view/`). The view link can't be turned back into the edit link.
+- **Published from CI.** Each GitHub release is published to npm by GitHub Actions with provenance. CI type-checks a consumer of the published types under both `nodenext` and `bundler` resolution, and runs the Playwright tests on Chromium and iPhone WebKit against a local collab server.
 
-## Collab server
-
-Rooms run on a Cloudflare Worker with one Durable Object per room (`worker/`), which fits Cloudflare's free plan. Each change is sent as the new version of the elements it touched; the server applies them in the order they arrive and passes them on, so when two people change the same element at once, everyone ends up with the later one. The room's board is saved 2 seconds after a change and deleted 7 days after the last person leaves. Only pages from the origins in `ALLOWED_ORIGINS` (`wrangler.jsonc`) can connect. Each room's Durable Object is named after its view id (`room:<view id>`): `/room/<room id>` hashes the room id to find it and lets you edit, `/view/<view id>` finds it directly and only lets you watch.
-
-To deploy your own:
+## Run your own collab server
 
 1. Create a Cloudflare account and an API token with the "Edit Cloudflare Workers" template.
 2. Add the repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. The "Deploy collab server" workflow then deploys on every push to `main` that changes the server (or run it by hand). Without the secrets it skips itself.
-3. Set the repository variable `COLLAB_URL` to the Worker's address (such as `https://dsa-whiteboard-collab.<you>.workers.dev`) so the site build shows Share. Locally, put `VITE_COLLAB_URL=…` in `.env.local`.
+3. Set the repository variable `COLLAB_URL` to the Worker's address (such as `https://dsa-whiteboard-collab.<you>.workers.dev`) so the site build shows Share. Only pages from the origins in `ALLOWED_ORIGINS` (`wrangler.jsonc`) can connect.
 
 ## Develop
 
@@ -159,25 +73,21 @@ npm run dev          # the standalone site at http://localhost:5180
 npm test             # unit tests (Vitest)
 npm run test:e2e     # build the site, then run the Playwright tests (Chromium and iPhone WebKit) against a local collab server
 npm run worker:dev   # the collab server at http://localhost:8787, no Cloudflare account needed
-npm run media        # rebuild, then regenerate the README screenshot and co-editing GIF in docs/images/
+npm run media        # rebuild, then regenerate the screenshot and co-editing GIF in docs/images/
 npm run lint
 npm run typecheck
 npm run build        # the package (dist/) and the site (dist-app/)
+npm run check:types  # compile a consumer against the built types (after build)
 ```
 
-The first time, run `npx playwright install chromium webkit`.
+The first time, run `npx playwright install chromium webkit`. To try co-editing locally, run `npm run worker:dev`, start the site with `VITE_COLLAB_URL=http://localhost:8787` in `.env.local`, and open the shared link in a second browser profile.
 
-- `src/lib/`: pure logic with no React: the board model and every edit, layout, Build from text parsers, templates, Python highlighting and editing rules, and SVG export. Most of the unit tests are here.
-- `src/components/`: the editor (`Whiteboard.tsx`), element views, and the steps and playback bar.
-- `src/schema.ts`: the board format.
-- `src/i18n/`: interface text in both languages.
-- `src/styles/`: `board.css` for the board, `base.css` for apps without their own styles.
-- `src/collab/`: live co-editing in the browser: the messages, turning edits into changes and back, and the connection with its retries.
-- `worker/`: the collab server (Cloudflare Worker and Durable Object).
-- `app/`: the standalone site deployed to GitHub Pages.
-
-To try co-editing locally, run `npm run worker:dev` and start the site with `VITE_COLLAB_URL=http://localhost:8787` in `.env.local`, then open the shared link in a second browser profile.
+- `src/lib/`: the board model and every edit, layout, Build from text parsers, templates, Python highlighting, and SVG export
+- `src/components/`: the editor (`Whiteboard.tsx`), element views, and the steps and playback bar
+- `src/schema.ts`: the board format; `src/i18n/`: interface text in both languages; `src/styles/`: `board.css` and `base.css`
+- `src/collab/`: co-editing in the browser: messages, turning edits into changes and back, and the connection with its retries
+- `worker/`: the collab server; `app/`: the standalone site
 
 ## License
 
-MIT
+[MIT](LICENSE)

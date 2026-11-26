@@ -86,6 +86,7 @@ e2e/            Playwright；collab.spec.ts 用兩個瀏覽器測一起編輯
 - `npm run test:e2e` 會先建置；只跑 `npx playwright test` 的話記得先 `npx vite build --mode e2e`，不然測到的是舊版。
 - **本機的 iPhone 測試不可信**：這台 Windows 電腦的顯示縮放是 125%，模擬的 iPhone 寬度會變小，固定在畫面上的元素會擋住點擊。iPhone 看 CI（Linux）的結果。
 - 截圖確認畫面：用 Playwright 寫個暫時的腳本截圖，用完刪掉。
+- **README 和文件**：README 只放第一屏（一句話、試用連結、兩人共編的動畫、五個重點、參考板書的動畫）、在 React 裡用（最常用的參數）、怎麼做的、自己架共用伺服器、開發、授權，保持短。每個元件的說明在 `docs/elements.md`（加元件或改行為時改這裡），所有參數和匯出在 `docs/react.md`（加參數時改這裡）。`docs/images/co-editing.gif` 和截圖由 `npm run media` 產生；`reference-board-{light,dark}.gif` 是從刷題教練的 `docs/images/` 複製過來的（那邊 `npm run screenshots` 產生），那邊重拍了就再複製一次。
 
 ## CI、部署、發版
 

@@ -1,5 +1,6 @@
 import type { BoardDoc } from '../schema';
 import type { ClientMessage, Peer, ServerMessage } from './messages';
+import { distinctGuestName } from './names';
 import { applyOps, opKey, STEPS_KEY, type Op } from './ops';
 
 // 共用房間的連線。伺服器依收到的順序決定誰的修改最後算數，再送給所有人（包含自己）。
@@ -38,6 +39,8 @@ export class CollabClient {
   private ws: WebSocket | null = null;
   private closed = false;
   private seed: boolean;
+  /** 第一次進房間時檢查過名字有沒有撞到；重新連上不再換，免得斷線一次名字就變 */
+  private named = false;
   private backoff = 500;
   private retry: ReturnType<typeof setTimeout> | null = null;
   private batch = 0;
@@ -169,6 +172,7 @@ export class CollabClient {
         this.queue.clear();
         this.cb.onInit(applyOps(message.doc, mine));
         this.setState('open');
+        this.takeDistinctName(message.peers);
         if (mine.length > 0) {
           this.send(mine);
           this.flush();
@@ -195,7 +199,9 @@ export class CollabClient {
         return;
       case 'join':
       case 'peer':
-        this.peers.set(message.peer.id, message.peer);
+        // 伺服器把改名字送給所有人，包含自己；自己的不放進「其他人」裡
+        if (message.peer.id === this.me?.id) this.me = message.peer;
+        else this.peers.set(message.peer.id, message.peer);
         this.emit();
         return;
       case 'leave':
@@ -206,6 +212,14 @@ export class CollabClient {
       case 'reject':
         return;
     }
+  }
+
+  /** 房間裡已經有人用同一個預設名字（例如同一個瀏覽器開了兩個分頁），這次就換一個；不存起來，下次照舊 */
+  private takeDistinctName(peers: readonly Peer[]): void {
+    if (this.named) return;
+    this.named = true;
+    const next = distinctGuestName(this.name, peers.map((peer) => peer.name));
+    if (next !== this.name) this.rename(next);
   }
 
   private setState(state: CollabStatus['state']): void {

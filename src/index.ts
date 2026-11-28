@@ -14,7 +14,7 @@ export type { HelpAction } from './components/HelpPanel';
 export type { Locale, Messages } from './i18n';
 export type { CollabStatus } from './collab/client';
 export { newRoomId, PEER_COLORS, ROOM_ID, VIEW_ID, type Peer, type PeerColor } from './collab/messages';
-export { guestName, isOldGuestName } from './collab/names';
+export { distinctGuestName, guestName, isOldGuestName, localGuestName } from './collab/names';
 export type { CollabOptions } from './collab/useCollab';
 export { EMPTY_DOC, MAX_STEPS, type BoardStep } from './lib/model';
 export { boardToSvg } from './lib/exportSvg';

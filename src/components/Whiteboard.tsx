@@ -13,6 +13,7 @@ import {
 import { flushSync } from 'react-dom';
 import { applyOps, diffDocs, rebaseHistory } from '../collab/ops';
 import { RoomContext, roomLabel } from '../collab/context';
+import { localGuestName } from '../collab/names';
 import { useCollab, type CollabOptions } from '../collab/useCollab';
 import { BOARD_COLORS, BOARD_MAX_BYTES, CELL_COLORS, type BoardColor, type CellColor } from '../constants';
 import type { BoardDoc } from '../schema';
@@ -245,7 +246,7 @@ function Editor<R>({
   collab,
   helpActions,
 }: Omit<WhiteboardProps<R>, 'locale' | 'onNotice'>) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const toast = useNotice();
   /** 只能看的共用連結：沒有元件庫和工具列，畫布只能拖著移動，步驟只能播放 */
   const viewOnly = !!collab?.viewOnly;
@@ -1925,7 +1926,7 @@ function Editor<R>({
                   <svg width="16" height="20" viewBox="0 0 16 20">
                     <path d="M1 1l13 9.5-6 .8-3.4 5.7z" />
                   </svg>
-                  <span>{peer.name}</span>
+                  <span>{localGuestName(peer.name, locale)}</span>
                 </div>
               );
             })}

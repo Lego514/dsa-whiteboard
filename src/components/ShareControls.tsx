@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { peopleOf, roomLabel, useRoom } from '../collab/context';
+import { localGuestName } from '../collab/names';
 import { useI18n } from '../i18n';
 import { PeerAvatar } from './PeerAvatar';
 
@@ -47,7 +48,7 @@ async function writeClipboard(text: string | undefined): Promise<boolean> {
 }
 
 export function ShareControls({ onShare, link, viewLink, onRename, onSaveCopy, onLeave }: ShareControlsProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const c = t.collab;
   const room = useRoom();
   const menuId = useId();
@@ -141,7 +142,7 @@ export function ShareControls({ onShare, link, viewLink, onRename, onSaveCopy, o
   const close = () => menu.current?.hidePopover();
   const rename = () => {
     close();
-    const next = window.prompt(c.renamePrompt, status?.me?.name ?? '')?.trim();
+    const next = window.prompt(c.renamePrompt, localGuestName(status?.me?.name ?? '', locale))?.trim();
     if (next) onRename?.(next);
   };
   const viewer = !!status?.me?.viewer;
@@ -217,7 +218,8 @@ export function ShareControls({ onShare, link, viewLink, onRename, onSaveCopy, o
               <li key={peer.id}>
                 <PeerAvatar name={peer.name} color={peer.color} />
                 <span className="board-room-name">
-                  {peer.name}
+                  {/* 預設名字用看的人的語言 */}
+                  {localGuestName(peer.name, locale)}
                   {isMe && c.you}
                   {peer.viewer && <span className="board-room-tag"> · {c.viewOnly}</span>}
                 </span>

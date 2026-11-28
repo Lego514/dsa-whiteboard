@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MESSAGES } from '../i18n';
-import { animalOf, GUEST_ANIMALS, guestName, isOldGuestName } from './names';
+import { animalOf, distinctGuestName, GUEST_ANIMALS, guestName, isOldGuestName, localGuestName } from './names';
 
 describe('default names in a shared room', () => {
   it('pairs an adjective with an animal in each language', () => {
@@ -36,5 +36,36 @@ describe('default names in a shared room', () => {
     expect(isOldGuestName('Ray')).toBe(false);
     expect(isOldGuestName('Guest Star')).toBe(false);
     expect(isOldGuestName('Brave Capybara')).toBe(false);
+  });
+
+  it('shows a default name in the language of whoever is looking, and leaves chosen names alone', () => {
+    expect(localGuestName('勇敢烏龜', 'en')).toBe('Brave Turtle');
+    expect(localGuestName('Witty Hedgehog', 'zh-TW')).toBe('機智刺蝟');
+    expect(localGuestName(' Happy Owl ', 'en')).toBe('Happy Owl');
+    expect(localGuestName('Ray', 'zh-TW')).toBe('Ray');
+  });
+
+  it('picks another default name when someone in the room already has it, in any language', () => {
+    // 同一個瀏覽器開兩個分頁：名字存在同一個地方，所以一樣
+    const next = distinctGuestName('勇敢烏龜', ['Brave Turtle'], () => 0);
+    expect(next).not.toBe('勇敢烏龜');
+    expect(animalOf(next)).toBeDefined();
+    // 留在原本的語言，而且換一種動物，頭像也分得出來
+    expect(next).toMatch(/^[^A-Za-z]+$/);
+    expect(animalOf(next)).not.toBe('turtle');
+  });
+
+  it('keeps the name when nobody else has it, or when the person chose it', () => {
+    expect(distinctGuestName('Brave Turtle', ['Calm Otter'])).toBe('Brave Turtle');
+    expect(distinctGuestName('Brave Turtle', [])).toBe('Brave Turtle');
+    expect(distinctGuestName('Ray', ['Ray'])).toBe('Ray');
+  });
+
+  it('never repeats a name that is taken, even in a full room', () => {
+    const taken = ['Brave Turtle', 'Calm Turtle', 'Brave Otter', 'Eager Panda', 'Kind Fox', 'Lucky Owl', 'Quiet Koala'];
+    for (let i = 0; i < 50; i += 1) {
+      const next = distinctGuestName('Brave Turtle', taken);
+      expect(taken.map((name) => localGuestName(name, 'en'))).not.toContain(next);
+    }
   });
 });

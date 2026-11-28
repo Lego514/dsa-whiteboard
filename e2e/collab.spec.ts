@@ -108,6 +108,38 @@ test('two people edit one shared board together', async ({ page: alice, browser 
   await context.close();
 });
 
+// 同一個瀏覽器開兩個分頁：名字存在同一份 localStorage，第二個分頁進來時換一個沒人用的；
+// 名字是在中文介面時取的，換成英文介面也用英文顯示
+test('two tabs in one browser get different names, shown in the interface language', async ({ page: first }) => {
+  await named(first, '勇敢烏龜');
+  await first.addInitScript(() => window.localStorage.setItem('dsa-whiteboard:locale', 'en'));
+  await fakeClipboard(first, true);
+  await first.goto('./');
+  await first.getByRole('button', { name: 'Share' }).click();
+  await first.getByRole('dialog', { name: 'Share this board' }).getByRole('button', { name: 'Create link' }).click();
+  await expect(first).toHaveURL(/#room=[a-z0-9]{16}$/);
+  await first.keyboard.press('Escape');
+
+  const second = await first.context().newPage();
+  await second.goto(first.url());
+  await expect(status(second)).toHaveText('2 people here');
+
+  // 先來的分頁留著原本的名字（換成英文），後來的換了一個
+  await first.getByRole('button', { name: /^Shared room/ }).click();
+  await expect(first.getByRole('list', { name: 'Shared room' })).toContainText('Brave Turtle (you)');
+  await first.keyboard.press('Escape');
+  for (const page of [first, second]) {
+    await page.getByRole('button', { name: /^Shared room/ }).click();
+    const people = page.getByRole('list', { name: 'Shared room' }).getByRole('listitem');
+    await expect(people).toHaveCount(2);
+    const names = (await people.allInnerTexts()).map((text) => text.replace(/\(you\)|Change name/g, '').trim());
+    expect(new Set(names).size, 'the two names differ').toBe(2);
+    expect(names).toContain('Brave Turtle');
+    expect(names.join(' '), 'no Chinese in an English interface').toMatch(/^[ -~]+$/);
+    await page.keyboard.press('Escape');
+  }
+});
+
 test('explains sharing before making a room, and hands over the link when copying is blocked', async ({ page }) => {
   await fakeClipboard(page, false);
   // 舊版自動取的名字，進房間時換成形容詞加動物

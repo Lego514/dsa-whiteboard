@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { applyBatch } from '../../worker/room';
 import { EMPTY_DOC } from '../lib/model';
 import type { BoardDoc, BoardElement } from '../schema';
-import { CollabClient } from './client';
+import { CollabClient, type CollabStatus } from './client';
 import type { Peer, ServerMessage } from './messages';
 import { applyOps, diffDocs } from './ops';
 
@@ -33,12 +33,21 @@ class FakeServer {
     const peers = [...this.sockets.values()];
     this.sockets.set(ws, peer);
     this.to(ws, { t: 'init', you: peer, doc: this.doc, empty: !this.stored && this.doc.elements.length === 0, peers });
+    for (const socket of this.sockets.keys()) if (socket !== ws) this.to(socket, { t: 'join', peer });
   }
 
   receive(ws: FakeSocket, raw: string) {
     const message = JSON.parse(raw);
     const from = this.sockets.get(ws);
-    if (!from || message.t !== 'ops') return;
+    if (!from) return;
+    // 跟真的伺服器一樣：改名字送給所有人，包含自己
+    if (message.t === 'rename') {
+      const peer = { ...from, name: message.name };
+      this.sockets.set(ws, peer);
+      for (const socket of this.sockets.keys()) this.to(socket, { t: 'peer', peer });
+      return;
+    }
+    if (message.t !== 'ops') return;
     const result = applyBatch(this.doc, message.ops);
     if (!result.ok) return;
     this.doc = result.doc;
@@ -80,6 +89,7 @@ class FakeSocket {
 function person(name: string, start: BoardDoc = EMPTY_DOC, seed = false) {
   const me = {
     doc: start,
+    status: null as CollabStatus | null,
     client: null as unknown as CollabClient,
     edit(next: BoardDoc) {
       const ops = diffDocs(me.doc, next);
@@ -92,7 +102,7 @@ function person(name: string, start: BoardDoc = EMPTY_DOC, seed = false) {
     onInit: (doc) => (me.doc = doc),
     onRemote: (ops) => (me.doc = applyOps(me.doc, ops)),
     onCursor: () => {},
-    onStatus: () => {},
+    onStatus: (status) => (me.status = status),
   });
   me.client.connect();
   return me;
@@ -117,7 +127,42 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/** 這個人畫面上看到的房間裡的人（自己在第一個） */
+const namesSeenBy = (who: ReturnType<typeof person>) => [who.status?.me?.name, ...(who.status?.peers ?? []).map((peer) => peer.name)];
+
 describe('collab client', () => {
+  it('takes another default name when the same one is already in the room, like a second tab', () => {
+    const first = person('勇敢烏龜');
+    settle();
+    const second = person('勇敢烏龜');
+    settle();
+    const [mine, other] = namesSeenBy(second);
+    expect(other).toBe('勇敢烏龜');
+    expect(mine).not.toBe('勇敢烏龜');
+    expect(namesSeenBy(first)).toEqual(['勇敢烏龜', mine]);
+    // 名字是英文的人也算撞到
+    const third = person('Brave Turtle');
+    settle();
+    expect(new Set(namesSeenBy(third)).size).toBe(3);
+  });
+
+  it('keeps a name the person chose, even if someone else has it', () => {
+    person('Ray');
+    settle();
+    const other = person('Ray');
+    settle();
+    expect(namesSeenBy(other)).toEqual(['Ray', 'Ray']);
+  });
+
+  it('lists yourself once after a rename', () => {
+    const alice = person('Alice');
+    person('Bob');
+    settle();
+    alice.client.rename('Alicia');
+    settle();
+    expect(namesSeenBy(alice)).toEqual(['Alicia', 'Bob']);
+  });
+
   it('puts the creator’s board into an empty room, and the next person sees it', () => {
     const alice = person('Alice', { elements: [v('a', '1'), v('b', '2')] }, true);
     settle();

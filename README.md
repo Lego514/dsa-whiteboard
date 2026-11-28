@@ -62,7 +62,7 @@ Every prop, the share controls, and the schema export for servers are in [docs/r
 ## Run your own collab server
 
 1. Create a Cloudflare account and an API token with the "Edit Cloudflare Workers" template.
-2. Add the repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. The "Deploy collab server" workflow then deploys on every push to `main` that changes the server (or run it by hand). Without the secrets it skips itself.
+2. Add the repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. The "Deploy collab server" workflow then deploys after CI passes on `main` for a change that touches the server (or run it by hand). Without the secrets it skips itself.
 3. Set the repository variable `COLLAB_URL` to the Worker's address (such as `https://dsa-whiteboard-collab.<you>.workers.dev`) so the site build shows Share. Only pages from the origins in `ALLOWED_ORIGINS` (`wrangler.jsonc`) can connect.
 
 ## Develop

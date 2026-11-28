@@ -64,7 +64,7 @@ e2e/            Playwright；collab.spec.ts 用兩個瀏覽器測一起編輯
 - **`model.ts` 和 `bits.ts`、`unionFind.ts`、`trie.ts` 互相引用**：這些檔案的頂層（常數、`const x = ...`）不能用到 model 的值，只能在函式裡用，不然看誰先載入，會讀到還沒初始化的值。
 - **一起編輯的同步規則**：每個元件為單位，伺服器收到的順序決定誰贏（last-write-wins）；自己還沒被確認的修改，不套用別人對同一個元件的修改；復原只退回自己的動作（別人的修改會套進復原紀錄的每個版本）。改這部分要跑 `src/collab/client.test.ts`（模擬網路的收斂測試）。
 - **共用伺服器只接受 `wrangler.jsonc` 裡 `ALLOWED_ORIGINS` 列的網址**；新的網站要用共用，就加在這裡。
-- **只能看的連結**（v0.1.21）：`/room/<房間代碼>` 能改、`/view/<只能看的代碼>` 只能看。只能看的代碼是房間代碼的 SHA-256（`worker/room.ts` 的 `viewIdOf`），Durable Object 用 `room:<只能看的代碼>` 當名字，兩種連結找到同一個房間；能不能改由 worker 決定（轉給房間時自己設 `role`），只能看的人送修改會收到 `reject: read_only`。能改的人的 `init` 帶 `viewId`（`CollabStatus.viewId`），`ShareControls` 的 `viewLink(viewId)` 組出連結；白板的 `collab.viewOnly` 拿掉元件庫、工具列、記一步，畫布只能拖、快捷鍵只留縮放和說明，第一次有內容時放到畫面中間。以前的房間用房間代碼當名字：能改的人第一次進來時 `adoptLegacy` 把內容搬過去（`takeDoc`），2026-11-20 以後可以拿掉。
+- **只能看的連結**（v0.1.21）：`/room/<房間代碼>` 能改、`/view/<只能看的代碼>` 只能看。只能看的代碼是房間代碼的 SHA-256（`worker/room.ts` 的 `viewIdOf`），Durable Object 用 `room:<只能看的代碼>` 當名字，兩種連結找到同一個房間；能不能改由 worker 決定（轉給房間時自己設 `role`），只能看的人送修改會收到 `reject: read_only`。能改的人的 `init` 帶 `viewId`（`CollabStatus.viewId`），`ShareControls` 的 `viewLink(viewId)` 組出連結；白板的 `collab.viewOnly` 拿掉元件庫、工具列、記一步，畫布只能拖、快捷鍵只留縮放和說明，第一次有內容時放到畫面中間。Durable Object 的名字前面的 `room:` 是最早的房間用房間代碼當名字時留下的，改掉的話現有的房間會找不到，不要改。
 - **`readOnlySteps`、`startAtStep`**（v0.1.18）：給做好的步驟用（刷題教練的參考板書）。`readOnlySteps` 讓播放列的說明變成會換行的文字、拿掉「從這步繼續編輯」「刪除這一步」，只留「停止播放」；`startAtStep` 一打開就從那一步播放。
 - **`autoPlay`**（v0.1.22）：跟 `startAtStep` 一起用，一打開就自動播放一輪、停在最後一步。自動播放每一步停多久看說明的長短（`lib/playback.ts` 的 `stepDwellMs`：一秒大約讀 4 個字，1.4 到 9 秒），使用者自己錄的步驟也一樣。
 - **網站的範例**（`app/examples.ts`，`app/examples/*.json`）：第一次來（`localStorage` 沒有 `dsa-whiteboard:doc`）自動播放 206；`#example=206|1143|200` 的連結不管來過幾次都打開那一題（放在履歷、README），共用房間的連結優先。範例不存，「拿這張來改」才存成自己的白板（自己有東西時先問），「開空白白板」存一張空的，之後就不再自動放範例。內容從刷題教練的參考板書匯出（esbuild 打包 `loadReferenceBoard` 寫成 JSON），兩邊的講解一致。e2e 裡測自己白板的測試先 `asReturningVisitor(page)`（`e2e/returning.ts`），`npm run media` 也是。標題列上換範例的按鈕寫題型（`Example.topic`：串列、動態規劃、圖），不寫題號；寬的畫面三個並排、中等寬度一個下拉選單、手機在「⋯」，自己的白板上也有「範例 ▾」（共用房間裡沒有）。範例播放時按左邊的元件會跳出提示卡（`ExampleDrawPrompt`，元件區播放時 `pointer-events: none`，所以看點的位置）。這些都在 `app/ExampleControls.tsx`。
@@ -91,8 +91,8 @@ e2e/            Playwright；collab.spec.ts 用兩個瀏覽器測一起編輯
 ## CI、部署、發版
 
 - CI（`.github/workflows/ci.yml`）：`check`（lint、typecheck、單元測試、建置、`wrangler deploy --dry-run`）和 `e2e`。
-- **網站**：main 有新 commit 就部署到 GitHub Pages（`pages.yml`），建置時讀 repo variable `COLLAB_URL`（已設定）。
-- **共用伺服器**：main 上 `worker/`、`src/collab/`、`wrangler.jsonc` 等有改動時，`worker.yml` 用 repo secrets `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`（使用者已設定）部署到 Cloudflare。免費方案。
+- **網站**：main 的 CI 通過後部署到 GitHub Pages（`pages.yml`，`workflow_run`，部署 CI 測過的那個 commit），建置時讀 repo variable `COLLAB_URL`（已設定）。
+- **共用伺服器**：main 的 CI 通過、而且那次合併改到 `worker/`、`src/collab/`、`wrangler.jsonc` 等（清單在 `worker.yml` 的 `SERVER_PATHS`）時，`worker.yml` 用 repo secrets `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`（使用者已設定）部署到 Cloudflare。免費方案。
 - **發新版給刷題教練用**：
   1. 在這個 repo 開 PR：功能，加上 `package.json`（和 `package-lock.json`）的版本號。
   2. CI 通過、使用者說合併後：`git tag -a vX.Y.Z -m vX.Y.Z`、`git push origin vX.Y.Z`、`gh release create vX.Y.Z`（寫這版的改變）。

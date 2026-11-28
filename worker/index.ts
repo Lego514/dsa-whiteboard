@@ -42,14 +42,14 @@ export default {
     const allowed = env.ALLOWED_ORIGINS.split(',').map((o) => o.trim());
     if (!allowed.includes(origin)) return new Response('Origin not allowed', { status: 403 });
     const viewId = edit ? await viewIdOf(id) : id;
-    // 「room:」開頭：舊的房間直接用房間代碼當名字（代碼裡不會有冒號），兩種名字不會撞在一起
+    // 「room:」開頭是最早的房間直接用房間代碼當名字時留下來的（代碼裡不會有冒號，兩種名字不會撞在一起）；
+    // 改掉的話現有的房間會找不到，所以照舊
     const room = env.ROOMS.get(env.ROOMS.idFromName(`room:${viewId}`));
     // 能不能改由這裡決定，用戶端自己帶的 role 不算數
     const inner = new URL(request.url);
-    for (const key of ['role', 'view', 'legacy']) inner.searchParams.delete(key);
+    for (const key of ['role', 'view']) inner.searchParams.delete(key);
     inner.searchParams.set('role', edit ? 'edit' : 'view');
     inner.searchParams.set('view', viewId);
-    if (edit) inner.searchParams.set('legacy', id);
     return room.fetch(new Request(inner, request));
   },
 } satisfies ExportedHandler<Env>;
@@ -58,14 +58,11 @@ export class Room extends DurableObject<Env> {
   /** 房間的內容；物件休眠後會從儲存空間讀回來 */
   private doc: BoardDoc | null = null;
   private dirty = false;
-  private legacyChecked = false;
 
   async fetch(request: Request): Promise<Response> {
     const params = new URL(request.url).searchParams;
     const viewer = params.get('role') !== 'edit';
     const viewId = params.get('view') ?? undefined;
-    const legacy = params.get('legacy');
-    if (!viewer && legacy) await this.adoptLegacy(legacy);
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server);
@@ -156,31 +153,6 @@ export class Room extends DurableObject<Env> {
     } else {
       await this.ctx.storage.setAlarm(expiresAt);
     }
-  }
-
-  /**
-   * 舊的房間（還沒有只能看的連結以前開的）用房間代碼當名字：能改的人第一次從新的名字進來時，把內容搬過來。
-   * 房間最後一個人離開一週後就刪掉，所以 2026-11-20 以後可以拿掉
-   */
-  private async adoptLegacy(roomId: string): Promise<void> {
-    if (this.legacyChecked) return;
-    this.legacyChecked = true;
-    if (this.doc || (await this.ctx.storage.get('doc')) !== undefined) return;
-    const old = this.env.ROOMS.get(this.env.ROOMS.idFromName(roomId));
-    const doc = loadDoc(await old.takeDoc());
-    if (!doc) return;
-    this.doc = doc;
-    await this.save();
-  }
-
-  /** 舊的房間交出內容，然後清空自己（給 adoptLegacy 用） */
-  async takeDoc(): Promise<unknown> {
-    const doc = await this.ctx.storage.get('doc');
-    if (doc === undefined) return null;
-    await this.ctx.storage.deleteAlarm();
-    await this.ctx.storage.deleteAll();
-    this.doc = null;
-    return doc;
   }
 
   private async left(ws: WebSocket): Promise<void> {
